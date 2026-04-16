@@ -57,13 +57,19 @@ async function roomJoin(code,name){
 async function roomStart(code){
   const snap=await get(ref(db,`${RP}/${code}`));if(!snap.exists())return;
   const order=Object.entries(snap.val().players||{}).sort((a,b)=>a[1].ts-b[1].ts).map(([p])=>p);
-  await update(ref(db,`${RP}/${code}`),{status:'playing',activePid:order[0],turnOrder:order});
+  // Firebase rejects JS arrays — store as plain object {0:pid, 1:pid, …}
+  const turnOrderObj={};order.forEach((pid,i)=>{turnOrderObj[i]=pid;});
+  await update(ref(db,`${RP}/${code}`),{status:'playing',activePid:order[0],turnOrder:turnOrderObj});
 }
 async function roomEndTurn(code,pid,finalScore,catScores){
   await update(ref(db,`${RP}/${code}/players/${pid}`),{score:finalScore,scores:catScores});
   const snap=await get(ref(db,`${RP}/${code}`));if(!snap.exists())return;
-  const order=snap.val().turnOrder||[];
-  const next=order[order.indexOf(pid)+1]||null;
+  // Firebase stores turnOrder as {0:pid,1:pid,…} — convert back to array
+  const raw=snap.val().turnOrder||{};
+  const order=Object.keys(raw).sort((a,b)=>Number(a)-Number(b)).map(k=>raw[k]);
+  if(!order.length){await update(ref(db,`${RP}/${code}`),{status:'done',activePid:null});return;}
+  const idx=order.indexOf(pid);
+  const next=(idx>=0&&idx<order.length-1)?order[idx+1]:null;
   await update(ref(db,`${RP}/${code}`),next?{activePid:next}:{status:'done',activePid:null});
 }
 async function roomBroadcastDice(code,pid,dice,held,rollsLeft){
@@ -1047,7 +1053,22 @@ async function jmbConnect(){
   if(code.length!==4){showToast('Enter a 4-letter code');return;}
   if(jmbUnsub){jmbUnsub();}
   document.getElementById('jmb-room-code').textContent=code;
-  jmbUnsub=window.CloudRoom.roomListen(code,jmbOnRoomUpdate);
+  jmbSetState('waiting'); // show waiting until first real data arrives
+  let firstFire=true;
+  jmbUnsub=window.CloudRoom.roomListen(code,(room)=>{
+    if(!room){
+      if(firstFire){
+        // Firebase may return null briefly on first connect — wait one more tick
+        firstFire=false;return;
+      }
+      jmbSetState('entry');
+      document.getElementById('jmb-room-code').textContent='—';
+      showToast('Room not found or closed',3000);
+      return;
+    }
+    firstFire=false;
+    jmbOnRoomUpdate(room);
+  });
 }
 function jmbOnRoomUpdate(room){
   if(!room){jmbSetState('entry');document.getElementById('jmb-room-code').textContent='—';showToast('Room not found',3000);return;}
