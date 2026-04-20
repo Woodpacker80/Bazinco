@@ -67,8 +67,20 @@ async function roomSaveFinalScore(code,pid,finalScore,catScores){
 }
 async function roomBroadcastDice(code,pid,dice,held,rollsLeft){try{await set(ref(db,`${RP}/${code}/diceState`),{pid,dice,held,rollsLeft,ts:Date.now()});}catch(e){}}
 async function roomCleanup(code){try{await remove(ref(db,`${RP}/${code}`));}catch(e){}}
-// Fix #4: roomListen path uses RP constant throughout
-function roomListen(code,cb){return onValue(ref(db,`${RP}/${code}`),snap=>cb(snap.exists()?snap.val():null));}
+// Fix 5: roomListen auto-expires rooms older than 4 hours
+const ROOM_TTL=4*60*60*1000; // 4 hours in ms
+function roomListen(code,cb){
+  return onValue(ref(db,`${RP}/${code}`),snap=>{
+    if(!snap.exists()){cb(null);return;}
+    const room=snap.val();
+    // Auto-expire stale rooms
+    if(room.createdAt&&(Date.now()-room.createdAt)>ROOM_TTL){
+      remove(ref(db,`${RP}/${code}`)).catch(()=>{});
+      cb(null);return;
+    }
+    cb(room);
+  });
+}
 window.CloudScores={cloudAddScore,cloudWatchScores};
 window.CloudRoom={roomCreate,roomJoin,roomStart,roomBankScore,roomSaveFinalScore,roomBroadcastDice,roomCleanup,roomListen};
 </script>
@@ -849,19 +861,37 @@ function jmbOnRoomUpdate(room){
   document.getElementById('jmb-stat-players').textContent=entries.length;
   document.getElementById('jmb-stat-status').textContent=room.status==='waiting'?'Lobby':room.status==='playing'?'🔴 LIVE':'Finished';
   document.getElementById('jmb-stat-round').textContent=room.roundNum||'—';
-  document.getElementById('jmb-stat-active').textContent=room.activePid?players[room.activePid]?.name||'—':'—';
+  document.getElementById('jmb-stat-active').textContent=(room.activePid&&players[room.activePid]?.name)||'—';
   jmbRenderStandings(entries,room.host,room.activePid);
-  // Spotlight always follows activePid in real-time (Fix #3)
-  if(room.activePid&&players[room.activePid])jmbRenderSpotlight(room.activePid,players[room.activePid]);
+  // Spotlight: always render — pass null if no active player yet (pre-game)
+  const activePid=room.activePid||null;
+  const activePlayer=(activePid&&players[activePid])||null;
+  jmbRenderSpotlight(activePid,activePlayer);
   if(room.status==='waiting'){jmbSetState('waiting');return;}
-  if(room.status==='done'){jmbSetState('done');const winner=entries.filter(([,p])=>p.finalScore!==null).sort((a,b)=>(b[1].finalScore||0)-(a[1].finalScore||0))[0];document.getElementById('jmb-winner-text').textContent=winner?`🥇 ${winner[1].name} wins with ${winner[1].finalScore} points!`:'Game over!';return;}
+  if(room.status==='done'){
+    jmbSetState('done');
+    // Find winner: highest finalScore among finished players
+    const finished=entries.filter(([,p])=>{
+      const cs=(p.scores&&typeof p.scores==='object')?p.scores:{};
+      const ALL=['ones','twos','threes','fours','fives','sixes','threeKind','fourKind','fullHouse','smStraight','lgStraight','chance'];
+      return ALL.every(id=>cs[id]!==undefined);
+    });
+    const winner=finished.sort((a,b)=>(b[1].finalScore||0)-(a[1].finalScore||0))[0];
+    document.getElementById('jmb-winner-text').textContent=winner
+      ?`🥇 ${winner[1].name} wins with ${winner[1].finalScore} points!`
+      :'Game over!';
+    return;
+  }
+  // Playing state
   jmbSetState('playing');
-  const ap=players[room.activePid];
+  const ap=activePlayer;
   document.getElementById('jmb-active-name').textContent=ap?.name||'—';
-  document.getElementById('jmb-active-meta').textContent=`Round ${room.roundNum||1} of 13 · ${entries.length} players`;
+  document.getElementById('jmb-active-meta').textContent=`Round ${room.roundNum||1} of 13 · ${entries.length} player${entries.length!==1?'s':''}`;
   jmbRenderDice(room.diceState||null);
   const ds=room.diceState;
-  document.getElementById('jmb-roll-status').textContent=ds?(ds.rollsLeft===0?'Choosing category…':`${ds.rollsLeft} roll${ds.rollsLeft!==1?'s':''} left`):'Waiting for roll…';
+  document.getElementById('jmb-roll-status').textContent=ds
+    ?(ds.rollsLeft===0?'Choosing category…':`${ds.rollsLeft} roll${ds.rollsLeft!==1?'s':''} left`)
+    :'Waiting for roll…';
 }
 function jmbRenderDice(ds){
   const row=document.getElementById('jmb-dice-row');row.innerHTML='';
@@ -870,29 +900,96 @@ function jmbRenderDice(ds){
 }
 function jmbRenderStandings(entries,hostId,activePid){
   const el=document.getElementById('jmb-standings');el.innerHTML='';
-  [...entries].sort((a,b)=>{const sa=a[1].finalScore??-1,sb=b[1].finalScore??-1;return sb-sa;}).forEach(([pid,p],i)=>{
-    const isDone=p.finalScore!==null&&p.finalScore!==undefined;
-    const div=document.createElement('div');div.className='j-standing'+(pid===activePid?' s-active':'')+(isDone?' s-done':'');
+  // Helper: calculate running score from scores object (same logic as grandTotal)
+  function runScore(p){
+    const cs=p.scores||{};
+    const UPPER_IDS=['ones','twos','threes','fours','fives','sixes'];
+    const LOWER_IDS=['threeKind','fourKind','fullHouse','smStraight','lgStraight','chance'];
+    let upper=UPPER_IDS.reduce((t,id)=>t+(cs[id]??0),0);
+    let lower=LOWER_IDS.reduce((t,id)=>t+(cs[id]??0),0);
+    const bonus=upper>=63?35:0;
+    const baz=cs['bazinco_pts']||0;
+    return upper+lower+bonus+baz;
+  }
+  // "Finished" = all 13 non-Bazinco categories have been scored
+  const ALL_CAT_IDS=['ones','twos','threes','fours','fives','sixes','threeKind','fourKind','fullHouse','smStraight','lgStraight','chance'];
+  function isFinished(p){
+    const cs=p.scores||{};
+    return ALL_CAT_IDS.every(id=>cs[id]!==undefined);
+  }
+  // Sort: finished players by finalScore desc, then active players by running score desc
+  const sorted=[...entries].sort((a,b)=>{
+    const af=isFinished(a[1]),bf=isFinished(b[1]);
+    if(af&&bf)return (b[1].finalScore||0)-(a[1].finalScore||0);
+    if(af)return -1; if(bf)return 1;
+    return runScore(b[1])-runScore(a[1]);
+  });
+  sorted.forEach(([pid,p],i)=>{
+    const finished=isFinished(p);
+    const displayScore=finished?(p.finalScore??runScore(p)):runScore(p);
+    const div=document.createElement('div');
+    div.className='j-standing'+(pid===activePid?' s-active':'')+(finished?' s-done':'');
     const badge=document.createElement('div');badge.className='j-rank'+(i===0?' gold':i===1?' silver':i===2?' bronze':'');badge.textContent=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`;
-    const info=document.createElement('div');info.className='j-sinfo';info.innerHTML=`<div class="j-sname">${p.name}${pid===hostId?' 🎩':''}</div><div class="j-ssub">${isDone?'Finished':pid===activePid?'🎲 Rolling':'Waiting'}</div>`;
-    const score=document.createElement('div');score.className='j-sscore';score.textContent=isDone?p.finalScore:'…';
+    const info=document.createElement('div');info.className='j-sinfo';
+    info.innerHTML=`<div class="j-sname">${p.name||'?'}${pid===hostId?' 🎩':''}</div><div class="j-ssub">${finished?'Finished ✓':pid===activePid?'🎲 Rolling':'Waiting'}</div>`;
+    const score=document.createElement('div');score.className='j-sscore';score.textContent=displayScore;
     div.appendChild(badge);div.appendChild(info);div.appendChild(score);el.appendChild(div);
   });
 }
 function jmbRenderSpotlight(pid,player){
-  document.getElementById('jmb-spotlight-name').textContent=player.name||'—';
-  const el=document.getElementById('jmb-spotlight-card');el.innerHTML='';
-  if(player.finalScore!==null&&player.finalScore!==undefined){const r=document.createElement('div');r.className='j-total-row';r.innerHTML=`<div class="j-total-name">FINAL SCORE</div><div class="j-total-val">${player.finalScore}</div>`;el.appendChild(r);return;}
-  const cs=player.scores||{};
+  const nameEl=document.getElementById('jmb-spotlight-name');
+  const el=document.getElementById('jmb-spotlight-card');
+  // Guard: if no player data yet, show waiting state
+  if(!player){nameEl.textContent='Spotlight';el.innerHTML='<div style="font-size:13px;color:var(--muted);text-align:center;padding:20px;letter-spacing:1px">Waiting for game to start…</div>';return;}
+  nameEl.textContent=player.name||'—';
+  el.innerHTML='';
+  // Safe score accessor — returns undefined if not yet banked, never 'undefined' string
+  const cs=(player.scores&&typeof player.scores==='object')?player.scores:{};
+  const ALL_CAT_IDS=['ones','twos','threes','fours','fives','sixes','threeKind','fourKind','fullHouse','smStraight','lgStraight','chance'];
+  const allScored=ALL_CAT_IDS.every(id=>cs[id]!==undefined);
+  // If player has completed all 13 categories, show final score
+  if(allScored&&(player.finalScore!==null&&player.finalScore!==undefined)){
+    const r=document.createElement('div');r.className='j-total-row';r.innerHTML=`<div class="j-total-name">FINAL SCORE</div><div class="j-total-val">${player.finalScore}</div>`;el.appendChild(r);return;
+  }
+  // Upper section
   const uLbl=document.createElement('div');uLbl.className='j-cat-section';uLbl.textContent='Upper Section';el.appendChild(uLbl);
   let uSum=0;
-  JMB_CATS.filter(c=>c.upper).forEach(cat=>{const val=cs[cat.id];const scored=val!==undefined;if(scored)uSum+=val;const row=document.createElement('div');row.className='j-cat-row '+(scored?'cat-scored':'cat-pending');row.innerHTML=`<div class="j-cat-name">${cat.name}</div><div class="j-cat-val${scored&&val===0?' zero':''}">${scored?val:'—'}</div>`;el.appendChild(row);});
-  const bonusEarned=uSum>=63;const bRow=document.createElement('div');bRow.className='j-bonus-row';bRow.innerHTML=`<div class="j-bonus-name">Upper Bonus</div><div class="j-bonus-val${bonusEarned?' earned':''}">${bonusEarned?'+35 ✓':`${uSum}/63`}</div>`;el.appendChild(bRow);
+  JMB_CATS.filter(c=>c.upper).forEach(cat=>{
+    const val=cs[cat.id];
+    const scored=(val!==undefined&&val!==null);
+    if(scored)uSum+=Number(val);
+    const row=document.createElement('div');row.className='j-cat-row '+(scored?'cat-scored':'cat-pending');
+    const displayVal=scored?Number(val):'—';
+    row.innerHTML=`<div class="j-cat-name">${cat.name}</div><div class="j-cat-val${scored&&Number(val)===0?' zero':''}">${displayVal}</div>`;
+    el.appendChild(row);
+  });
+  const bonusEarned=uSum>=63;
+  const bRow=document.createElement('div');bRow.className='j-bonus-row';
+  bRow.innerHTML=`<div class="j-bonus-name">Upper Bonus</div><div class="j-bonus-val${bonusEarned?' earned':''}">${bonusEarned?'+35 ✓':`${uSum}/63`}</div>`;
+  el.appendChild(bRow);
+  // Lower section
   const lLbl=document.createElement('div');lLbl.className='j-cat-section';lLbl.textContent='Lower Section';el.appendChild(lLbl);
-  JMB_CATS.filter(c=>!c.upper).forEach(cat=>{const val=cs[cat.id];const scored=val!==undefined;const row=document.createElement('div');row.className='j-cat-row '+(scored?'cat-scored':'cat-pending');row.innerHTML=`<div class="j-cat-name">${cat.name}</div><div class="j-cat-val${scored&&val===0?' zero':''}">${scored?val:'—'}</div>`;el.appendChild(row);});
-  const baz=cs['bazinco_pts'];if(baz){const bazRow=document.createElement('div');bazRow.className='j-bonus-row';bazRow.innerHTML=`<div class="j-bonus-name">Bazinco! ⚡</div><div class="j-bonus-val earned">${baz}</div>`;el.appendChild(bazRow);}
-  const runTotal=Object.entries(cs).filter(([k])=>k!=='bazinco_pts').reduce((a,[,v])=>a+(v||0),0)+(bonusEarned?35:0)+(baz||0);
-  const tRow=document.createElement('div');tRow.className='j-total-row';tRow.innerHTML=`<div class="j-total-name">Running Total</div><div class="j-total-val">${runTotal}</div>`;el.appendChild(tRow);
+  JMB_CATS.filter(c=>!c.upper).forEach(cat=>{
+    const val=cs[cat.id];
+    const scored=(val!==undefined&&val!==null);
+    const row=document.createElement('div');row.className='j-cat-row '+(scored?'cat-scored':'cat-pending');
+    const displayVal=scored?Number(val):'—';
+    row.innerHTML=`<div class="j-cat-name">${cat.name}</div><div class="j-cat-val${scored&&Number(val)===0?' zero':''}">${displayVal}</div>`;
+    el.appendChild(row);
+  });
+  // Bazinco bonus row (only if hit)
+  const bazPtsVal=cs['bazinco_pts'];
+  if(bazPtsVal!==undefined&&bazPtsVal!==null&&Number(bazPtsVal)>0){
+    const bazRow=document.createElement('div');bazRow.className='j-bonus-row';
+    bazRow.innerHTML=`<div class="j-bonus-name">Bazinco! ⚡</div><div class="j-bonus-val earned">${Number(bazPtsVal)}</div>`;
+    el.appendChild(bazRow);
+  }
+  // Running total
+  const catTotal=ALL_CAT_IDS.reduce((a,id)=>a+(cs[id]!==undefined?Number(cs[id]):0),0);
+  const runTotal=catTotal+(bonusEarned?35:0)+(bazPtsVal?Number(bazPtsVal):0);
+  const tRow=document.createElement('div');tRow.className='j-total-row';
+  tRow.innerHTML=`<div class="j-total-name">Running Total</div><div class="j-total-val">${runTotal}</div>`;
+  el.appendChild(tRow);
 }
 
 // INIT + NAVIGATION
