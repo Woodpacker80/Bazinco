@@ -320,60 +320,60 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 }
 #screen-jumbotron.active{display:grid;}
 
-/* Header — BAZINCO! centred, Exit button right */
+/* Header — Room code LEFT | BAZINCO! CENTRE | Exit RIGHT */
 .jh{
   grid-area:jh;background:#020810;
   border-bottom:2px solid var(--gold);
   display:grid;
-  grid-template-columns:1fr auto 1fr;
+  grid-template-columns:260px 1fr 260px;
   align-items:center;
-  padding:0 20px;
+  padding:0;
   box-shadow:0 2px 20px rgba(201,151,42,0.15);
 }
+.jh-room{
+  display:flex;flex-direction:column;justify-content:center;
+  padding:0 16px;height:100%;border-right:1px solid rgba(45,101,186,0.3);
+}
+.jh-room-label{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+.jh-room-code{font-family:'Cinzel',serif;font-size:18px;font-weight:900;color:var(--gold2);letter-spacing:5px;line-height:1.1;}
 .jh-logo{
-  grid-column:2;
   font-family:'Cinzel',serif;font-size:22px;font-weight:900;letter-spacing:6px;
   background:linear-gradient(160deg,var(--gold3),var(--gold));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
   text-align:center;white-space:nowrap;
 }
+.jh-exit{
+  display:flex;justify-content:flex-end;align-items:center;
+  padding:0 16px;height:100%;border-left:1px solid rgba(45,101,186,0.3);
+}
 .jh-close{
-  grid-column:3;justify-self:end;
   background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);
   font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;padding:6px 12px;cursor:pointer;
   transition:border-color 0.2s,color 0.2s;
 }
 .jh-close:hover{border-color:var(--gold);color:var(--gold2);}
 
-/* Left — Room code banner + Standings */
+/* Left — Standings only (room code moved to header) */
 .jl{
   grid-area:jl;background:#060f22;
   border-right:1px solid rgba(45,101,186,0.35);
   display:flex;flex-direction:column;
   overflow:hidden;
 }
-/* Room code sits at the TOP of the left column, directly above standings */
-.jl-room-banner{
-  background:#030a16;border-bottom:1px solid rgba(45,101,186,0.4);
-  padding:8px 14px;flex-shrink:0;
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-}
-.jl-room-label{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
-.jl-room-code{font-family:'Cinzel',serif;font-size:20px;font-weight:900;color:var(--gold2);letter-spacing:5px;}
 .jl-section-label{
   font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--text2);
   padding:8px 14px 4px;flex-shrink:0;border-bottom:1px solid rgba(45,101,186,0.25);
 }
-/* Compact 6-player standings — fixed height cards that never overflow */
+/* Compact 6-player standings — no overflow, cards scale to fill height */
 .jl-standings{
-  flex:1;overflow-y:auto;padding:6px 10px;
-  display:flex;flex-direction:column;gap:4px;
+  flex:1;overflow:hidden;padding:4px 8px;
+  display:flex;flex-direction:column;gap:3px;
 }
 .j-standing{
-  background:var(--surface);border-radius:8px;border:1px solid var(--border);
-  padding:7px 10px;display:flex;align-items:center;gap:8px;
+  background:var(--surface);border-radius:7px;border:1px solid var(--border);
+  padding:5px 8px;display:flex;align-items:center;gap:6px;
+  flex:1;min-height:0;/* fills equal share of parent height */
   transition:border-color 0.3s,background 0.3s,box-shadow 0.3s;
-  min-height:0;flex-shrink:0;
 }
 .j-standing.s-active{border-color:var(--gold);background:rgba(201,151,42,0.08);box-shadow:0 0 12px rgba(201,151,42,0.12);}
 .j-standing.s-done{opacity:0.55;}
@@ -412,45 +412,51 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .jc-done-title{font-family:'Cinzel',serif;font-size:26px;font-weight:900;color:var(--gold2);letter-spacing:3px;}
 .jc-winner{font-size:15px;color:var(--text2);letter-spacing:2px;text-align:center;}
 
-/* Right — Active Scorecard with TWO-COLUMN category layout */
+/* Right — Active Scorecard: fixed header+footer, scrollable categories */
 .jr{
   grid-area:jr;background:#050d1c;
   border-left:1px solid rgba(45,101,186,0.35);
-  padding:10px 10px 8px;overflow-y:auto;
-  display:flex;flex-direction:column;gap:4px;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  padding:0;
 }
 .j-spotlight-header{
   font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--gold2);
-  letter-spacing:2px;text-align:center;padding-bottom:6px;
-  border-bottom:1px solid var(--border);margin-bottom:4px;flex-shrink:0;
+  letter-spacing:2px;text-align:center;padding:8px 10px 6px;
+  border-bottom:1px solid var(--border);flex-shrink:0;
+}
+/* Scrollable category area */
+.jr-scroll{flex:1;overflow-y:auto;padding:6px 8px;}
+/* Fixed Running Total footer */
+.jr-total-footer{
+  flex-shrink:0;padding:6px 8px;border-top:1px solid var(--border);
+  background:#040c1a;
 }
 /* Two-column grid for categories */
-.j-cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 6px;}
+.j-cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 4px;}
 .j-cat-section{
   font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--text2);
-  padding:4px 4px 2px;grid-column:1/-1;/* spans full width */
+  padding:3px 4px 1px;grid-column:1/-1;
 }
-.j-cat-row{display:flex;align-items:center;padding:4px 6px;border-radius:5px;gap:4px;min-width:0;}
+.j-cat-row{display:flex;align-items:center;padding:3px 5px;border-radius:4px;gap:3px;min-width:0;}
 .j-cat-row.cat-scored{background:rgba(201,151,42,0.07);}
-.j-cat-row.cat-pending{opacity:0.38;}
+.j-cat-row.cat-pending{opacity:0.35;}
 .j-cat-name{font-size:11px;font-weight:700;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
-.j-cat-val{font-family:'Cinzel',serif;font-size:12px;font-weight:700;color:var(--gold2);white-space:nowrap;flex-shrink:0;}
+.j-cat-val{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--gold2);white-space:nowrap;flex-shrink:0;}
 .j-cat-val.zero{color:var(--muted);}
-/* Bonus and total rows span full width */
 .j-bonus-row{
-  display:flex;align-items:center;padding:4px 6px;
-  background:rgba(0,0,0,0.2);border-radius:5px;grid-column:1/-1;
+  display:flex;align-items:center;padding:3px 5px;
+  background:rgba(0,0,0,0.2);border-radius:4px;grid-column:1/-1;
 }
-.j-bonus-name{font-size:10px;color:var(--text2);flex:1;}
-.j-bonus-val{font-family:'Cinzel',serif;font-size:11px;color:var(--muted);}
+.j-bonus-name{font-size:9px;color:var(--text2);flex:1;}
+.j-bonus-val{font-family:'Cinzel',serif;font-size:10px;color:var(--muted);}
 .j-bonus-val.earned{color:var(--gold2);}
 .j-total-row{
-  display:flex;align-items:center;padding:8px 6px;
+  display:flex;align-items:center;padding:6px 8px;
   background:var(--surface);border-radius:8px;border:1px solid var(--border);
-  margin-top:4px;grid-column:1/-1;
 }
 .j-total-name{font-family:'Cinzel',serif;font-size:10px;color:var(--text2);flex:1;letter-spacing:1px;}
-.j-total-val{font-family:'Cinzel',serif;font-size:20px;font-weight:900;color:var(--gold3);}
+.j-total-val{font-family:'Cinzel',serif;font-size:22px;font-weight:900;color:var(--gold3);}
 
 /* Footer */
 .jf{grid-area:jf;background:#020810;border-top:1px solid rgba(45,101,186,0.3);display:flex;align-items:center;justify-content:center;gap:40px;padding:0 24px;}
@@ -509,23 +515,21 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
   <div class="version-tag">v 6.3 Cobalt · Cloud Edition</div>
 </div>
 
-<!-- JUMBOTRON — v6.3 layout: BAZINCO centred, Room code top-left, two-col spotlight -->
+<!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
 <div id="screen-jumbotron">
-  <!-- Header: [empty] [BAZINCO! centred] [Exit button right] -->
+  <!-- Header: [Room code LEFT] [BAZINCO! CENTRE] [Exit RIGHT] -->
   <div class="jh">
-    <div></div>
-    <div class="jh-logo">BAZINCO!</div>
-    <button class="jh-close" id="btn-jmb-close">✕ EXIT TV VIEW</button>
-  </div>
-  <!-- Left column: Room code banner + Live Standings -->
-  <div class="jl">
-    <div class="jl-room-banner">
-      <div>
-        <div class="jl-room-label">Room Code</div>
-        <div class="jl-room-code" id="jmb-room-code">—</div>
-      </div>
-      <div id="jmb-stat-status" style="font-family:'Cinzel',serif;font-size:11px;color:var(--muted);letter-spacing:1px;">—</div>
+    <div class="jh-room">
+      <div class="jh-room-label">Room</div>
+      <div class="jh-room-code" id="jmb-room-code">—</div>
     </div>
+    <div class="jh-logo">BAZINCO!</div>
+    <div class="jh-exit">
+      <button class="jh-close" id="btn-jmb-close">✕ EXIT TV VIEW</button>
+    </div>
+  </div>
+  <!-- Left column: Standings only -->
+  <div class="jl">
     <div class="jl-section-label">🏆 Live Standings · Round <span id="jmb-stat-round">—</span></div>
     <div class="jl-standings" id="jmb-standings"></div>
   </div>
@@ -557,14 +561,16 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <div class="jc-winner" id="jmb-winner-text">—</div>
     </div>
   </div>
-  <!-- Right column: Active player scorecard (two-column grid) -->
+  <!-- Right column: Active scorecard — fixed header, scrollable cats, fixed total footer -->
   <div class="jr">
     <div class="j-spotlight-header" id="jmb-spotlight-name">Active Scorecard</div>
-    <div id="jmb-spotlight-card"></div>
+    <div class="jr-scroll"><div id="jmb-spotlight-card"></div></div>
+    <div class="jr-total-footer"><div id="jmb-total-footer"></div></div>
   </div>
   <!-- Footer stats -->
   <div class="jf">
     <div class="j-stat"><div class="j-stat-label">Players</div><div class="j-stat-val" id="jmb-stat-players">—</div></div>
+    <div class="j-stat"><div class="j-stat-label">Status</div><div class="j-stat-val" id="jmb-stat-status">—</div></div>
     <div class="j-stat"><div class="j-stat-label">Active Player</div><div class="j-stat-val" id="jmb-stat-active">—</div></div>
     <div class="j-stat"><div class="j-stat-label">Round</div><div class="j-stat-val" id="jmb-stat-round-footer">—</div></div>
     <div class="j-stat"><div class="j-stat-label">Leading Score</div><div class="j-stat-val" id="jmb-stat-top">—</div></div>
@@ -958,7 +964,23 @@ function onRoomUpdate(room){
     renderRollUI();
   }
   if(room.status==='playing'&&document.getElementById('screen-waiting')?.classList.contains('active')){initGame();return;}
-  if(room.status==='done'){if(roomUnsub){roomUnsub();roomUnsub=null;}openScoreboard();}
+  if(room.status==='done'){
+    if(roomUnsub){roomUnsub();roomUnsub=null;}
+    // Fix 5: 500ms delay then show global winner toast with full standings
+    setTimeout(()=>{
+      const players2=room.players||{};
+      const ranked=Object.entries(players2)
+        .map(([pid,p])=>({pid,p,score:jmbRunScore(p)}))
+        .sort((a,b)=>b.score-a.score);
+      if(ranked.length){
+        const safeName2=(pid,p)=>(p&&p.name&&p.name.trim())||pid.slice(0,4).toUpperCase();
+        const medals=['🥇','🥈','🥉'];
+        const lines=ranked.map((r,i)=>`${medals[i]||`${i+1}.`}${safeName2(r.pid,r.p)}:${r.score}`);
+        showToast(lines.join(' · '),6000);
+      }
+    },500);
+    openScoreboard();
+  }
 }
 async function doStartGame(){if(!window.CloudRoom)return;Audio.uiTick();Haptics.tick();await window.CloudRoom.roomStart(roomCode);}
 async function leaveRoom(){Audio.uiTick();Haptics.tick();if(roomUnsub){roomUnsub();roomUnsub=null;}if(roomCode&&roomIsHost&&window.CloudRoom)await window.CloudRoom.roomCleanup(roomCode);resetRoomState();showScreen('screen-name');}
@@ -985,34 +1007,34 @@ function jmbConnect(){
 function jmbOnRoomUpdate(room){
   const players=room.players||{};
   const entries=Object.entries(players).sort((a,b)=>a[1].ts-b[1].ts);
-  // Footer + header stats
+  // Fix 2: safe name — use first 4 chars of pid if player.name is missing
+  function safeName(pid,p){return(p&&p.name&&p.name.trim())||pid.slice(0,4).toUpperCase();}
+  // Stats
   document.getElementById('jmb-stat-players').textContent=entries.length;
-  const statusText=room.status==='waiting'?'Lobby':room.status==='playing'?'🔴 LIVE':'Finished';
-  document.getElementById('jmb-stat-status').textContent=statusText;
-  const roundText=room.roundNum||'—';
-  document.getElementById('jmb-stat-round').textContent=roundText;
-  document.getElementById('jmb-stat-round-footer').textContent=roundText;
-  document.getElementById('jmb-stat-active').textContent=(room.activePid&&players[room.activePid]?.name)||'—';
-  // Leading score
+  document.getElementById('jmb-stat-status').textContent=room.status==='waiting'?'Lobby':room.status==='playing'?'🔴 LIVE':'Finished';
+  const rn=room.roundNum||'—';
+  document.getElementById('jmb-stat-round').textContent=rn;
+  document.getElementById('jmb-stat-round-footer').textContent=rn;
+  document.getElementById('jmb-stat-active').textContent=room.activePid?safeName(room.activePid,players[room.activePid]):'—';
   const topScore=Math.max(0,...entries.map(([,p])=>jmbRunScore(p)));
   document.getElementById('jmb-stat-top').textContent=topScore>0?topScore:'—';
-  // Left: standings
-  jmbRenderStandings(entries,room.host,room.activePid);
-  // Right: spotlight scorecard (always render — '—' for unscored)
+  // Left standings
+  jmbRenderStandings(entries,room.host,room.activePid,safeName);
+  // Right spotlight
   const activePid=room.activePid||null;
   const activePlayer=(activePid&&players[activePid])||null;
-  jmbRenderSpotlight(activePid,activePlayer);
+  jmbRenderSpotlight(activePid,activePlayer,safeName);
   if(room.status==='waiting'){jmbSetState('waiting');return;}
   if(room.status==='done'){
     jmbSetState('done');
-    const finished=entries.filter(([,p])=>JMB_ALL_IDS.every(id=>(p.scores||{})[id]!==undefined));
-    const winner=finished.sort((a,b)=>jmbRunScore(b[1])-jmbRunScore(a[1]))[0];
-    document.getElementById('jmb-winner-text').textContent=winner?`🥇 ${winner[1].name||'?'} wins with ${jmbRunScore(winner[1])} points!`:'Game over!';
+    const ranked=[...entries].sort((a,b)=>jmbRunScore(b[1])-jmbRunScore(a[1]));
+    const lines=ranked.map(([pid,p],i)=>{const medals=['🥇','🥈','🥉'];return`${medals[i]||`${i+1}.`} ${safeName(pid,p)}: ${jmbRunScore(p)} pts`;});
+    document.getElementById('jmb-winner-text').textContent=lines.join('  ');
     return;
   }
   jmbSetState('playing');
-  const ap=activePlayer;
-  document.getElementById('jmb-active-name').textContent=ap?.name||'—';
+  // Fix 2: active name always uses safeName so '?' never appears
+  document.getElementById('jmb-active-name').textContent=activePid?safeName(activePid,activePlayer):'—';
   document.getElementById('jmb-active-meta').textContent=`Round ${room.roundNum||1} of 13 · ${entries.length} player${entries.length!==1?'s':''}`;
   jmbRenderDice(room.diceState||null);
   const ds=room.diceState;
@@ -1034,7 +1056,8 @@ function jmbRenderDice(ds){
   const vals=ds?.dice||[0,0,0,0,0];const helds=ds?.held||[false,false,false,false,false];
   vals.forEach((v,i)=>{const d=document.createElement('div');d.className='jc-die'+(helds[i]?' jc-held':'');if(v>0)d.appendChild(makeSVG(v,48));row.appendChild(d);});
 }
-function jmbRenderStandings(entries,hostId,activePid){
+function jmbRenderStandings(entries,hostId,activePid,safeName){
+  safeName=safeName||(function(pid,p){return(p&&p.name&&p.name.trim())||pid.slice(0,4).toUpperCase();});
   const el=document.getElementById('jmb-standings');el.innerHTML='';
   const ALL=['ones','twos','threes','fours','fives','sixes','threeKind','fourKind','fullHouse','smStraight','lgStraight','chance'];
   function isFinished(p){const cs=p.scores||{};return ALL.every(id=>cs[id]!==undefined);}
@@ -1044,27 +1067,28 @@ function jmbRenderStandings(entries,hostId,activePid){
     const div=document.createElement('div');div.className='j-standing'+(pid===activePid?' s-active':'')+(finished?' s-done':'');
     const badge=document.createElement('div');badge.className='j-rank'+(i===0?' gold':i===1?' silver':i===2?' bronze':'');badge.textContent=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`;
     const info=document.createElement('div');info.className='j-sinfo';
-    info.innerHTML=`<div class="j-sname">${p.name||'?'}${pid===hostId?' 🎩':''}</div><div class="j-ssub">${finished?'Final ✓':pid===activePid?'🎲 Rolling':'Waiting'}</div>`;
+    info.innerHTML=`<div class="j-sname">${safeName(pid,p)}${pid===hostId?' 🎩':''}</div><div class="j-ssub">${finished?'Final ✓':pid===activePid?'🎲 Rolling':'Waiting'}</div>`;
     const scoreEl=document.createElement('div');scoreEl.className='j-sscore';scoreEl.textContent=score;
     div.appendChild(badge);div.appendChild(info);div.appendChild(scoreEl);el.appendChild(div);
   });
 }
-function jmbRenderSpotlight(pid,player){
+function jmbRenderSpotlight(pid,player,safeName){
+  safeName=safeName||(function(p2,pl){return(pl&&pl.name&&pl.name.trim())||(p2||'').slice(0,4).toUpperCase();});
   const nameEl=document.getElementById('jmb-spotlight-name');
   const el=document.getElementById('jmb-spotlight-card');
+  const footerEl=document.getElementById('jmb-total-footer');
   if(!player||!pid){
     nameEl.textContent='Active Scorecard';
     el.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:20px 4px;letter-spacing:1px">Waiting for game…</div>';
+    if(footerEl)footerEl.innerHTML='';
     return;
   }
-  nameEl.textContent=player.name||'—';
+  nameEl.textContent=safeName(pid,player);
   el.innerHTML='';
-  // Always read from scores only — finalScore is never used here
   const cs=(player.scores&&typeof player.scores==='object')?player.scores:{};
-  // Build two-column grid container
   const grid=document.createElement('div');grid.className='j-cat-grid';
-  // Upper section header (spans both columns)
-  const uHdr=document.createElement('div');uHdr.className='j-cat-section';uHdr.textContent='Upper Section';grid.appendChild(uHdr);
+  // Upper
+  const uHdr=document.createElement('div');uHdr.className='j-cat-section';uHdr.textContent='Upper';grid.appendChild(uHdr);
   let uSum=0;
   JMB_UPPER.forEach(cat=>{
     const raw=cs[cat.id];const banked=(raw!==undefined&&raw!==null);const val=banked?Number(raw):null;
@@ -1073,13 +1097,12 @@ function jmbRenderSpotlight(pid,player){
     row.innerHTML=`<div class="j-cat-name">${cat.name}</div><div class="j-cat-val${banked&&val===0?' zero':''}">${banked?val:'—'}</div>`;
     grid.appendChild(row);
   });
-  // Upper bonus (full width)
   const bonusEarned=uSum>=63;
   const bRow=document.createElement('div');bRow.className='j-bonus-row';
   bRow.innerHTML=`<div class="j-bonus-name">Bonus</div><div class="j-bonus-val${bonusEarned?' earned':''}">${bonusEarned?'+35 ✓':`${uSum}/63`}</div>`;
   grid.appendChild(bRow);
-  // Lower section header
-  const lHdr=document.createElement('div');lHdr.className='j-cat-section';lHdr.textContent='Lower Section';grid.appendChild(lHdr);
+  // Lower
+  const lHdr=document.createElement('div');lHdr.className='j-cat-section';lHdr.textContent='Lower';grid.appendChild(lHdr);
   let lSum=0;
   JMB_LOWER.forEach(cat=>{
     const raw=cs[cat.id];const banked=(raw!==undefined&&raw!==null);const val=banked?Number(raw):null;
@@ -1088,15 +1111,13 @@ function jmbRenderSpotlight(pid,player){
     row.innerHTML=`<div class="j-cat-name">${cat.name}</div><div class="j-cat-val${banked&&val===0?' zero':''}">${banked?val:'—'}</div>`;
     grid.appendChild(row);
   });
-  // Bazinco bonus (full width, only if earned)
+  // Bazinco row
   const bazRaw=cs['bazinco_pts'];const bazVal=(bazRaw!==undefined&&bazRaw!==null&&Number(bazRaw)>0)?Number(bazRaw):0;
   if(bazVal>0){const bazRow=document.createElement('div');bazRow.className='j-bonus-row';bazRow.innerHTML=`<div class="j-bonus-name">Bazinco! ⚡</div><div class="j-bonus-val earned">${bazVal}</div>`;grid.appendChild(bazRow);}
-  // Running total (full width)
-  const runTotal=uSum+lSum+(bonusEarned?35:0)+bazVal;
-  const tRow=document.createElement('div');tRow.className='j-total-row';
-  tRow.innerHTML=`<div class="j-total-name">Running Total</div><div class="j-total-val">${runTotal}</div>`;
-  grid.appendChild(tRow);
   el.appendChild(grid);
+  // Fix 3: Running total goes to the FIXED footer — never covered by scrolling content
+  const runTotal=uSum+lSum+(bonusEarned?35:0)+bazVal;
+  if(footerEl){footerEl.innerHTML='';const tRow=document.createElement('div');tRow.className='j-total-row';tRow.innerHTML=`<div class="j-total-name">Current Total</div><div class="j-total-val">${runTotal}</div>`;footerEl.appendChild(tRow);}
 }
 
 // INIT + NAVIGATION
