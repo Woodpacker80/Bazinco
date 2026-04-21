@@ -320,36 +320,40 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 }
 #screen-jumbotron.active{display:grid;}
 
-/* Header — Room code LEFT | BAZINCO! CENTRE | Exit RIGHT */
+/* Header — Room code LEFT | BAZINCO! CENTRE | Exit RIGHT
+   Left cell width = 260px (matches .jl column exactly)
+   Right cell width = 340px (matches .jr column exactly)
+   Centre = 1fr = remaining space with logo truly centred within it */
 .jh{
   grid-area:jh;background:#020810;
   border-bottom:2px solid var(--gold);
   display:grid;
-  grid-template-columns:260px 1fr 260px;
-  align-items:center;
+  grid-template-columns:260px 1fr 340px;
+  align-items:stretch;
   padding:0;
   box-shadow:0 2px 20px rgba(201,151,42,0.15);
 }
 .jh-room{
   display:flex;flex-direction:column;justify-content:center;
-  padding:0 16px;height:100%;border-right:1px solid rgba(45,101,186,0.3);
+  padding:0 16px;border-right:1px solid rgba(45,101,186,0.35);
 }
 .jh-room-label{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
-.jh-room-code{font-family:'Cinzel',serif;font-size:18px;font-weight:900;color:var(--gold2);letter-spacing:5px;line-height:1.1;}
+.jh-room-code{font-family:'Cinzel',serif;font-size:20px;font-weight:900;color:var(--gold2);letter-spacing:5px;line-height:1.1;}
 .jh-logo{
+  display:flex;align-items:center;justify-content:center;
   font-family:'Cinzel',serif;font-size:22px;font-weight:900;letter-spacing:6px;
   background:linear-gradient(160deg,var(--gold3),var(--gold));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-  text-align:center;white-space:nowrap;
+  white-space:nowrap;
 }
 .jh-exit{
   display:flex;justify-content:flex-end;align-items:center;
-  padding:0 16px;height:100%;border-left:1px solid rgba(45,101,186,0.3);
+  padding:0 16px;border-left:1px solid rgba(45,101,186,0.35);
 }
 .jh-close{
   background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);
   font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;padding:6px 12px;cursor:pointer;
-  transition:border-color 0.2s,color 0.2s;
+  transition:border-color 0.2s,color 0.2s;white-space:nowrap;
 }
 .jh-close:hover{border-color:var(--gold);color:var(--gold2);}
 
@@ -364,25 +368,26 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
   font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--text2);
   padding:8px 14px 4px;flex-shrink:0;border-bottom:1px solid rgba(45,101,186,0.25);
 }
-/* Compact 6-player standings — no overflow, cards scale to fill height */
+/* Compact 6-player standings — fixed card height, packed top, no stretching */
 .jl-standings{
-  flex:1;overflow:hidden;padding:4px 8px;
-  display:flex;flex-direction:column;gap:3px;
+  flex:1;overflow-y:auto;padding:6px 8px;
+  display:flex;flex-direction:column;gap:4px;
+  align-items:stretch;
 }
 .j-standing{
   background:var(--surface);border-radius:7px;border:1px solid var(--border);
   padding:5px 8px;display:flex;align-items:center;gap:6px;
-  flex:1;min-height:0;/* fills equal share of parent height */
+  flex-shrink:0;max-height:68px;
   transition:border-color 0.3s,background 0.3s,box-shadow 0.3s;
 }
 .j-standing.s-active{border-color:var(--gold);background:rgba(201,151,42,0.08);box-shadow:0 0 12px rgba(201,151,42,0.12);}
 .j-standing.s-done{opacity:0.55;}
-.j-rank{font-family:'Cinzel',serif;font-size:12px;font-weight:900;min-width:22px;text-align:center;color:var(--muted);}
+.j-rank{font-family:'Cinzel',serif;font-size:11px;font-weight:900;min-width:20px;text-align:center;color:var(--muted);}
 .j-rank.gold{color:var(--gold3);}.j-rank.silver{color:#c0c0c0;}.j-rank.bronze{color:#cd7f32;}
 .j-sinfo{flex:1;min-width:0;}
-.j-sname{font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.j-ssub{font-size:9px;color:var(--muted);margin-top:1px;letter-spacing:1px;}
-.j-sscore{font-family:'Cinzel',serif;font-size:17px;font-weight:900;color:var(--gold2);white-space:nowrap;}
+.j-sname{font-size:12px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.j-ssub{font-size:8px;color:var(--muted);margin-top:1px;letter-spacing:1px;}
+.j-sscore{font-family:'Cinzel',serif;font-size:15px;font-weight:900;color:var(--gold2);white-space:nowrap;}
 .j-standing.s-active .j-sscore{color:var(--gold3);}
 
 /* Center — Dice Arena */
@@ -425,8 +430,8 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
   letter-spacing:2px;text-align:center;padding:8px 10px 6px;
   border-bottom:1px solid var(--border);flex-shrink:0;
 }
-/* Scrollable category area */
-.jr-scroll{flex:1;overflow-y:auto;padding:6px 8px;}
+/* Scrollable category area — padding-bottom keeps last row above fixed footer */
+.jr-scroll{flex:1;overflow-y:auto;padding:6px 8px 120px;}
 /* Fixed Running Total footer */
 .jr-total-footer{
   flex-shrink:0;padding:6px 8px;border-top:1px solid var(--border);
@@ -966,20 +971,32 @@ function onRoomUpdate(room){
   if(room.status==='playing'&&document.getElementById('screen-waiting')?.classList.contains('active')){initGame();return;}
   if(room.status==='done'){
     if(roomUnsub){roomUnsub();roomUnsub=null;}
-    // Fix 5: 500ms delay then show global winner toast with full standings
+    // 1000ms delay ensures all final scores written by roomBankScore have synced to Firebase
+    // before we read them for the winner calculation. Fires on every connected device.
     setTimeout(()=>{
-      const players2=room.players||{};
-      const ranked=Object.entries(players2)
-        .map(([pid,p])=>({pid,p,score:jmbRunScore(p)}))
+      const allPlayers=room.players||{};
+      const UPPER_IDS=['ones','twos','threes','fours','fives','sixes'];
+      const LOWER_IDS=['threeKind','fourKind','fullHouse','smStraight','lgStraight','chance'];
+      function calcFinal(p){
+        const cs=(p&&p.scores&&typeof p.scores==='object')?p.scores:{};
+        const u=UPPER_IDS.reduce((t,id)=>t+Number(cs[id]??0),0);
+        const l=LOWER_IDS.reduce((t,id)=>t+Number(cs[id]??0),0);
+        return u+l+(u>=63?35:0)+Number(cs['bazinco_pts']||0);
+      }
+      function pName(pid,p){return(p&&p.name&&p.name.trim())||pid.slice(0,4).toUpperCase();}
+      const ranked=Object.entries(allPlayers)
+        .map(([pid,p])=>({pid,p,score:calcFinal(p)}))
         .sort((a,b)=>b.score-a.score);
       if(ranked.length){
-        const safeName2=(pid,p)=>(p&&p.name&&p.name.trim())||pid.slice(0,4).toUpperCase();
-        const medals=['🥇','🥈','🥉'];
-        const lines=ranked.map((r,i)=>`${medals[i]||`${i+1}.`}${safeName2(r.pid,r.p)}:${r.score}`);
-        showToast(lines.join(' · '),6000);
+        const w=ranked[0];
+        let msg=`🏆 ${pName(w.pid,w.p)} Wins!`;
+        if(ranked[1])msg+=`  2nd: ${pName(ranked[1].pid,ranked[1].p)}`;
+        if(ranked[2])msg+=`  3rd: ${pName(ranked[2].pid,ranked[2].p)}`;
+        showToast(msg,6000);
       }
-    },500);
-    openScoreboard();
+      // Open scoreboard after toast has had time to display
+      setTimeout(()=>openScoreboard(),1200);
+    },1000);
   }
 }
 async function doStartGame(){if(!window.CloudRoom)return;Audio.uiTick();Haptics.tick();await window.CloudRoom.roomStart(roomCode);}
@@ -1111,9 +1128,18 @@ function jmbRenderSpotlight(pid,player,safeName){
     row.innerHTML=`<div class="j-cat-name">${cat.name}</div><div class="j-cat-val${banked&&val===0?' zero':''}">${banked?val:'—'}</div>`;
     grid.appendChild(row);
   });
-  // Bazinco row
-  const bazRaw=cs['bazinco_pts'];const bazVal=(bazRaw!==undefined&&bazRaw!==null&&Number(bazRaw)>0)?Number(bazRaw):0;
-  if(bazVal>0){const bazRow=document.createElement('div');bazRow.className='j-bonus-row';bazRow.innerHTML=`<div class="j-bonus-name">Bazinco! ⚡</div><div class="j-bonus-val earned">${bazVal}</div>`;grid.appendChild(bazRow);}
+  // Bazinco row — always shown, spans full width, read-only, not a playable category
+  const bazRaw=cs['bazinco_pts'];
+  const bazVal=(bazRaw!==undefined&&bazRaw!==null&&Number(bazRaw)>0)?Number(bazRaw):0;
+  // Count: 50pts=1 hit, 150pts=2 hits, 250pts=3 hits...
+  const bazHits=bazVal>=50?Math.round((bazVal-50)/100)+1:0;
+  const bazRow=document.createElement('div');
+  // Use j-bonus-row so it spans both columns (grid-column:1/-1) and is clearly non-interactive
+  bazRow.className='j-bonus-row'+(bazVal>0?' '+'cat-scored':'');
+  bazRow.style.background=bazVal>0?'rgba(201,151,42,0.12)':'rgba(0,0,0,0.2)';
+  const bazLabel=bazVal>0?`Bazinco! (×${bazHits}) ⚡`:'Bazinco! ⚡';
+  bazRow.innerHTML=`<div class="j-bonus-name" style="color:${bazVal>0?'var(--gold2)':'var(--text2)'};font-weight:700">${bazLabel}</div><div class="j-bonus-val${bazVal>0?' earned':''}">${bazVal>0?bazVal:'—'}</div>`;
+  grid.appendChild(bazRow);
   el.appendChild(grid);
   // Fix 3: Running total goes to the FIXED footer — never covered by scrolling content
   const runTotal=uSum+lSum+(bonusEarned?35:0)+bazVal;
