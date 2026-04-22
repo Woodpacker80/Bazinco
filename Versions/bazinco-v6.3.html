@@ -249,20 +249,45 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .btn-got-it{width:100%;background:linear-gradient(135deg,var(--gold2),var(--gold));border:none;border-radius:var(--radius);color:#1a0800;font-family:'Cinzel',serif;font-size:16px;font-weight:700;letter-spacing:3px;padding:18px;cursor:pointer;box-shadow:0 4px 24px rgba(201,151,42,0.3),inset 0 1px 0 rgba(255,255,255,0.18);transition:transform 0.12s;}
 .btn-got-it:active{transform:scale(0.97);}
 /* END */
-#screen-end{align-items:center;justify-content:flex-start;padding:40px 24px;gap:20px;overflow-y:auto;background:var(--bg);}
-.end-icon{font-size:52px;animation:iconPop 0.5s cubic-bezier(0.36,0.07,0.19,0.97) both;}
+#screen-end{align-items:center;justify-content:flex-start;padding:24px 20px 40px;gap:16px;overflow-y:auto;background:var(--bg);}
+.end-icon{font-size:44px;animation:iconPop 0.5s cubic-bezier(0.36,0.07,0.19,0.97) both;}
 @keyframes iconPop{0%{transform:scale(0) rotate(-20deg);opacity:0;}60%{transform:scale(1.2) rotate(5deg);}100%{transform:scale(1) rotate(0);opacity:1;}}
-.end-title{font-family:'Cinzel',serif;font-size:32px;font-weight:900;letter-spacing:4px;background:linear-gradient(160deg,var(--gold3),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;}
-.end-player-label{font-size:15px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;text-align:center;}
-.end-score-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px 48px;text-align:center;width:100%;box-shadow:var(--shadow);}
-.end-score-label{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;}
-.end-score-num{font-family:'Cinzel',serif;font-size:68px;font-weight:900;line-height:1;background:linear-gradient(160deg,var(--gold3),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 2px 8px rgba(201,151,42,0.3));}
+.end-title{font-family:'Cinzel',serif;font-size:28px;font-weight:900;letter-spacing:4px;background:linear-gradient(160deg,var(--gold3),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;}
+.end-player-label{font-size:13px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;text-align:center;}
+/* Grand leaderboard box — permanent, unmissable */
+.end-leaderboard-box{
+  width:100%;background:var(--header-bg);
+  border:2px solid var(--gold);border-radius:18px;
+  overflow:hidden;box-shadow:0 0 32px rgba(201,151,42,0.2),var(--shadow);
+}
+.end-lb-header{
+  background:linear-gradient(135deg,rgba(201,151,42,0.2),rgba(201,151,42,0.05));
+  padding:10px 16px;text-align:center;
+  font-family:'Cinzel',serif;font-size:11px;font-weight:700;
+  letter-spacing:4px;color:var(--gold2);border-bottom:1px solid rgba(201,151,42,0.25);
+}
+.end-lb-row{
+  display:flex;align-items:center;padding:11px 16px;gap:12px;
+  border-bottom:1px solid var(--border);
+}
+.end-lb-row:last-child{border-bottom:none;}
+.end-lb-row.lb-me{background:rgba(201,151,42,0.08);}
+.end-lb-row.lb-1st{background:linear-gradient(90deg,rgba(245,216,120,0.15),rgba(201,151,42,0.05));}
+.end-lb-medal{font-size:20px;min-width:28px;text-align:center;}
+.end-lb-name{flex:1;font-size:15px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.end-lb-name.lb-me-label::after{content:' (you)';font-size:11px;color:var(--gold2);font-weight:600;}
+.end-lb-score{font-family:'Cinzel',serif;font-size:20px;font-weight:900;color:var(--gold2);}
+.end-lb-row.lb-1st .end-lb-score{color:var(--gold3);}
+/* Personal breakdown section */
+.end-section-label{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--text2);align-self:flex-start;padding-left:2px;}
 .end-breakdown{width:100%;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;}
 .bd-row{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);}
 .bd-row:last-child{border-bottom:none;}
 .bd-row .bv{font-family:'Cinzel',serif;font-size:14px;color:var(--gold2);font-weight:700;}
 .bd-row.hi{background:rgba(201,151,42,0.08);color:var(--gold3);}
 .bd-row.hi .bv{color:var(--gold3);}
+.bd-row.total-row{background:rgba(201,151,42,0.1);border-top:2px solid rgba(201,151,42,0.3);font-size:14px;font-weight:700;color:var(--gold3);}
+.bd-row.total-row .bv{font-size:18px;color:var(--gold3);}
 .end-btns{width:100%;display:flex;flex-direction:column;gap:12px;}
 /* CREDITS */
 #screen-credits{align-items:center;justify-content:center;min-height:100dvh;overflow:hidden;background:#000;position:relative;}
@@ -731,13 +756,22 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
   <div class="rules-got-it-wrap"><button class="btn-got-it" id="btn-got-it">GOT IT!</button></div>
 </div>
 
-<!-- END SCREEN -->
+<!-- END SCREEN — Post-game lobby -->
 <div id="screen-end" class="screen">
-  <div class="end-icon">🎲</div><div class="end-title">GAME OVER</div>
+  <div class="end-icon">🏆</div>
+  <div class="end-title">GAME OVER</div>
   <div class="end-player-label" id="end-name">Player</div>
-  <div class="end-score-box"><div class="end-score-label">Final Score</div><div class="end-score-num" id="end-score">0</div></div>
+  <!-- Grand leaderboard — populated by showEnd(ranked) -->
+  <div class="end-leaderboard-box" id="end-leaderboard-box">
+    <div class="end-lb-header">🏆 FINAL STANDINGS</div>
+  </div>
+  <!-- Personal breakdown -->
+  <div class="end-section-label">Your Scorecard</div>
   <div class="end-breakdown" id="end-breakdown"></div>
-  <div class="end-btns"><button class="btn-primary" id="btn-again">PLAY AGAIN</button><button class="btn-secondary" id="btn-end-scoreboard">🏆 View Scoreboard</button></div>
+  <div class="end-btns">
+    <button class="btn-primary" id="btn-again">PLAY AGAIN</button>
+    <button class="btn-secondary" id="btn-end-scoreboard">🌐 Global Scoreboard</button>
+  </div>
 </div>
 
 <!-- SCOREBOARD -->
@@ -928,17 +962,59 @@ function selectCat(id){
   }
 }
 
-function showEnd(){
+// showEnd(ranked) — ranked is optional array [{name, score, isMe}] from onRoomUpdate
+// In solo play, ranked is omitted and the leaderboard shows only this player.
+function showEnd(ranked){
   const final=grandTotal();
   document.getElementById('end-name').textContent=playerName;
-  document.getElementById('end-score').textContent=final;
+
+  // ── Leaderboard box ──
+  const lb=document.getElementById('end-leaderboard-box');
+  lb.innerHTML='<div class="end-lb-header">🏆 FINAL STANDINGS</div>';
+  const medals=['🥇','🥈','🥉'];
+  if(ranked&&ranked.length>0){
+    ranked.forEach((r,i)=>{
+      const isMe=r.isMe;
+      const row=document.createElement('div');
+      row.className='end-lb-row'+(i===0?' lb-1st':'')+(isMe?' lb-me':'');
+      row.innerHTML=`<div class="end-lb-medal">${medals[i]||`${i+1}`}</div><div class="end-lb-name${isMe?' lb-me-label':''}">${r.name}</div><div class="end-lb-score">${r.score}</div>`;
+      lb.appendChild(row);
+    });
+  } else {
+    // Solo game — show just this player
+    const row=document.createElement('div');
+    row.className='end-lb-row lb-1st';
+    row.innerHTML=`<div class="end-lb-medal">🥇</div><div class="end-lb-name lb-me-label">${playerName}</div><div class="end-lb-score">${final}</div>`;
+    lb.appendChild(row);
+  }
+
+  // ── Personal breakdown ──
   const bd=document.getElementById('end-breakdown');bd.innerHTML='';
   const u=upperSum(),uB=u>=63?35:0;
-  [['Upper Section',u,false],['Upper Bonus',uB,uB>0],...LOWER.filter(c=>!c.isBaz).map(c=>[c.name,scores[c.id]??0,false]),...(bazPts>0?[['Bazinco! Total',bazPts,true]]:[])].forEach(([l,v,h])=>{const r=document.createElement('div');r.className='bd-row'+(h?' hi':'');r.innerHTML=`<span>${l}</span><span class="bv">${v}</span>`;bd.appendChild(r);});
+  [
+    ['Upper Section',u,false],
+    ['Upper Bonus',uB,uB>0],
+    ...LOWER.filter(c=>!c.isBaz).map(c=>[c.name,scores[c.id]??0,false]),
+    ...(bazPts>0?[['Bazinco! Total',bazPts,true]]:[])
+  ].forEach(([l,v,h])=>{
+    const r=document.createElement('div');
+    r.className='bd-row'+(h?' hi':'');
+    r.innerHTML=`<span>${l}</span><span class="bv">${v}</span>`;
+    bd.appendChild(r);
+  });
+  // Final score row — highlighted at bottom of breakdown
+  const totalRow=document.createElement('div');
+  totalRow.className='bd-row total-row';
+  totalRow.innerHTML=`<span>YOUR FINAL SCORE</span><span class="bv">${final}</span>`;
+  bd.appendChild(totalRow);
+
   showScreen('screen-end');
   sbAddScore(playerName,final);
   if(roomCode&&roomPlayerId&&window.CloudRoom){
-    setTimeout(()=>{window.CloudRoom.roomSaveFinalScore(roomCode,roomPlayerId,final,{...scores,bazinco_pts:bazPts});window.CloudRoom.roomBankScore(roomCode,roomPlayerId,{...scores,bazinco_pts:bazPts});},800);
+    setTimeout(()=>{
+      window.CloudRoom.roomSaveFinalScore(roomCode,roomPlayerId,final,{...scores,bazinco_pts:bazPts});
+      window.CloudRoom.roomBankScore(roomCode,roomPlayerId,{...scores,bazinco_pts:bazPts});
+    },800);
   }
 }
 
@@ -982,9 +1058,10 @@ function openWaitingRoom(){
 }
 function onRoomUpdate(room){
   if(!room){if(roomUnsub){roomUnsub();roomUnsub=null;}showToast('Room closed',3000);resetRoomState();showScreen('screen-name');return;}
-  // ── DONE: winner toast fires first, before any other processing ──
+  // ── DONE: permanent end-game screen replaces ephemeral toast ──
   if(room.status==='done'){
     if(roomUnsub){roomUnsub();roomUnsub=null;}
+    // 2500ms — gives Firebase time to sync all final scores before we read them
     setTimeout(()=>{
       const allPlayers=room.players||{};
       const U=['ones','twos','threes','fours','fives','sixes'];
@@ -996,19 +1073,14 @@ function onRoomUpdate(room){
         return u+l+(u>=63?35:0)+Number(cs['bazinco_pts']||0);
       }
       function pName(pid,p){return(p&&p.name&&p.name.trim())||pid.slice(0,4).toUpperCase();}
+      // Build ranked list — mark which entry is this player
       const ranked=Object.entries(allPlayers)
-        .map(([pid,p])=>({pid,p,score:calcScore(p)}))
+        .map(([pid,p])=>({name:pName(pid,p),score:calcScore(p),isMe:pid===roomPlayerId}))
         .sort((a,b)=>b.score-a.score);
-      if(ranked.length){
-        const w=ranked[0];
-        let msg=`🏆 ${pName(w.pid,w.p)} Wins! (${w.score} pts)`;
-        if(ranked[1])msg+=`  2nd: ${pName(ranked[1].pid,ranked[1].p)}`;
-        if(ranked[2])msg+=`  3rd: ${pName(ranked[2].pid,ranked[2].p)}`;
-        showToast(msg,7000);
-      }
-      setTimeout(()=>openScoreboard(),1500);
+      // Show the permanent end-game lobby screen with leaderboard
+      showEnd(ranked);
     },2500);
-    return;// stop processing — game is over
+    return;
   }
   const players=room.players||{};
   const entries=Object.entries(players).sort((a,b)=>a[1].ts-b[1].ts);
