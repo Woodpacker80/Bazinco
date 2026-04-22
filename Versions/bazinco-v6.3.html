@@ -47,14 +47,42 @@ async function roomBankScore(code,pid,catScores){
   const raw=room.turnOrder||{};
   const order=Object.keys(raw).sort((a,b)=>Number(a)-Number(b)).map(k=>raw[k]);
   if(!order.length){await update(ref(db,`${RP}/${code}`),{status:'done',activePid:null});return;}
+
+  // The 13 standard scoreable categories (excluding auto-Bazinco)
+  const ALL13=['ones','twos','threes','fours','fives','sixes',
+               'threeKind','fourKind','fullHouse','smStraight','lgStraight','bazinco','chance'];
+
+  // Check if EVERY player has scored all 13 categories
+  const players=room.players||{};
+  const allDone=order.every(p=>{
+    const cs=(players[p]&&players[p].scores&&typeof players[p].scores==='object')?players[p].scores:{};
+    // The player whose scores we just wrote is in Firebase already (await update above)
+    return ALL13.every(id=>cs[id]!==undefined);
+  });
+
+  if(allDone){
+    // Every player has filled every category — game officially over
+    await update(ref(db,`${RP}/${code}`),{status:'done',activePid:null});
+    return;
+  }
+
+  // Also guard via round counter: after last player in round 13, force done
   const idx=order.indexOf(pid);
   const currentRound=room.roundNum||1;
   const isLastInRound=(idx===order.length-1);
   const nextRound=isLastInRound?currentRound+1:currentRound;
-  if(nextRound>13){await update(ref(db,`${RP}/${code}`),{status:'done',activePid:null});return;}
+  if(nextRound>13){
+    await update(ref(db,`${RP}/${code}`),{status:'done',activePid:null});
+    return;
+  }
+
+  // Advance to next player
   const nextPid=order[(idx+1)%order.length];
   await update(ref(db,`${RP}/${code}`),{activePid:nextPid,roundNum:nextRound});
-  await set(ref(db,`${RP}/${code}/diceState`),{pid:nextPid,dice:[0,0,0,0,0],held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()});
+  await set(ref(db,`${RP}/${code}/diceState`),{
+    pid:nextPid,dice:[0,0,0,0,0],
+    held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()
+  });
 }
 async function roomSaveFinalScore(code,pid,finalScore,catScores){await update(ref(db,`${RP}/${code}/players/${pid}`),{finalScore,scores:catScores});}
 async function roomBroadcastDice(code,pid,dice,held,rollsLeft){try{await set(ref(db,`${RP}/${code}/diceState`),{pid,dice,held,rollsLeft,ts:Date.now()});}catch(e){}}
@@ -386,7 +414,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .j-rank{font-family:'Cinzel',serif;font-size:11px;font-weight:900;min-width:20px;text-align:center;color:var(--muted);}
 .j-rank.gold{color:var(--gold3);}.j-rank.silver{color:#c0c0c0;}.j-rank.bronze{color:#cd7f32;}
 .j-sinfo{flex:1;min-width:0;}
-.j-sname{font-size:13px !important;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.j-sname{font-size:14px !important;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .j-ssub{font-size:8px;color:var(--muted);margin-top:1px;letter-spacing:1px;}
 .j-sscore{font-family:'Cinzel',serif;font-size:18px !important;font-weight:900;color:var(--gold2);white-space:nowrap;}
 .j-standing.s-active .j-sscore{color:var(--gold3);}
