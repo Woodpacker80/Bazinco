@@ -51,25 +51,23 @@ async function roomBankScore(code,pid,catScores){
   const order=Object.keys(raw).sort((a,b)=>Number(a)-Number(b)).map(k=>raw[k]);
   if(!order.length){await update(ref(db,`${RP}/${code}`),{status:'done',activePid:null,finishedAt:Date.now()});return;}
 
-  // 13 standard scoreable categories
-  const ALL13=['ones','twos','threes','fours','fives','sixes',
-               'threeKind','fourKind','fullHouse','smStraight','lgStraight','bazinco','chance'];
+  // 12 standard clickable categories — Bazinco is AUTO-JACKPOT, not a manual bank
+  const ALL12=['ones','twos','threes','fours','fives','sixes',
+               'threeKind','fourKind','fullHouse','smStraight','lgStraight','chance'];
 
   const players=room.players||{};
 
-  // isGameDone: every player has all 13 categories filled.
-  // For the current player we use the catScores argument (avoids read-after-write race).
-  // For all others we read from Firebase.
+  // isGameDone: every player has all 12 clickable categories filled.
+  // For the current player we use catScores directly (avoids read-after-write race).
   const isGameDone=order.every(p=>{
     let cs;
     if(p===pid){
-      // Use the scores we just wrote — guaranteed fresh
       cs=(catScores&&typeof catScores==='object')?catScores:{};
     } else {
       cs=(players[p]&&players[p].scores&&typeof players[p].scores==='object')
          ?players[p].scores:{};
     }
-    return ALL13.every(id=>cs[id]!==undefined);
+    return ALL12.every(id=>cs[id]!==undefined);
   });
 
   if(isGameDone){
@@ -79,12 +77,12 @@ async function roomBankScore(code,pid,catScores){
     return;
   }
 
-  // Round counter guard — belt-and-suspenders
+  // Round counter guard — 12 rounds max (Bazinco doesn't count as a turn)
   const idx=order.indexOf(pid);
   const currentRound=room.roundNum||1;
   const isLastInRound=(idx===order.length-1);
   const nextRound=isLastInRound?currentRound+1:currentRound;
-  if(nextRound>13){
+  if(nextRound>12){
     await update(ref(db,`${RP}/${code}`),{
       status:'done',activePid:null,finishedAt:Date.now()
     });
@@ -656,7 +654,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 <div id="screen-game" class="screen">
   <div class="game-header">
     <div class="hdr-left"><div class="hdr-player" id="hdr-player">—</div><div class="hdr-score" id="hdr-score">0</div></div>
-    <div class="hdr-turn" id="hdr-turn">Turn 1 of 13</div>
+    <div class="hdr-turn" id="hdr-turn">Turn 1 of 12</div>
     <div style="position:relative">
       <button class="btn-menu" id="btn-menu" aria-label="Menu"><span></span><span></span><span></span></button>
       <div class="dropdown" id="dropdown-menu">
@@ -712,7 +710,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 <div id="screen-rules">
   <div class="rules-header"><div class="rules-header-title">HOW TO PLAY</div></div>
   <div class="rules-body">
-    <p class="rules-intro">Roll 5 dice up to 3 times per turn. Tap any die to hold it. After rolling, tap a category to score it. Each category can only be used once across 13 turns.</p>
+    <p class="rules-intro">Roll 5 dice up to 3 times per turn. Tap any die to hold it. After rolling, tap a category to score it. Each category can only be used once across 12 turns.</p>
     <div class="rules-section-title">Upper Section</div>
     <div class="rules-card">
       <div class="rules-row"><div class="rules-row-name">Ones–Sixes</div><div class="rules-row-desc">Sum of all dice showing that number. Score 63+ to earn +35 bonus!</div><div class="rules-row-pts">Sum</div></div>
@@ -813,7 +811,7 @@ function isMyTurn(){return !roomCode||(roomActivePid===roomPlayerId);}
 function renderRollUI(){
   document.getElementById('hdr-player').textContent=playerName;
   document.getElementById('hdr-score').textContent=grandTotal();
-  document.getElementById('hdr-turn').textContent=`Turn ${turnNum} of 13`;
+  document.getElementById('hdr-turn').textContent=`Turn ${turnNum} of 12`;
   const btn=document.getElementById('btn-roll'),myTurn=isMyTurn();
   btn.disabled=rollsLeft<=0||animating||!myTurn;
   btn.textContent=myTurn?'ROLL':'Waiting…';
@@ -1095,7 +1093,7 @@ function jmbOnRoomUpdate(room){
   jmbSetState('playing');
   // Fix 2: active name always uses safeName so '?' never appears
   document.getElementById('jmb-active-name').textContent=activePid?safeName(activePid,activePlayer):'—';
-  document.getElementById('jmb-active-meta').textContent=`Round ${room.roundNum||1} of 13 · ${entries.length} player${entries.length!==1?'s':''}`;
+  document.getElementById('jmb-active-meta').textContent=`Round ${room.roundNum||1} of 12 · ${entries.length} player${entries.length!==1?'s':''}`;
   jmbRenderDice(room.diceState||null);
   const ds=room.diceState;
   document.getElementById('jmb-roll-status').textContent=ds?(ds.rollsLeft===0?'Choosing category…':`${ds.rollsLeft} roll${ds.rollsLeft!==1?'s':''} left`):'Waiting for roll…';
