@@ -15,7 +15,7 @@ const db=getDatabase(app);
 const SP="bazinco/scores",RP="bazinco/rooms";
 async function cloudAddScore(name,score){const date=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});try{await push(ref(db,SP),{name,score,date,ts:Date.now()});}catch(e){}}
 function cloudWatchScores(cb){const q=query(ref(db,SP),orderByChild("score"),limitToLast(20));return onValue(q,snap=>{if(!snap.exists()){cb([]);return;}const a=[];snap.forEach(c=>a.push(c.val()));a.sort((x,y)=>y.score-x.score);cb(a.slice(0,10));},()=>cb(null));}
-function mkCode(){const ch='ABCDEFGHJKLMNPQRSTUVWXYZ';return Array.from({length:4},()=>ch[Math.floor(Math.random()*ch.length)]).join('');}
+function mkCode(){const ch='0123456789';return Array.from({length:4},()=>ch[Math.floor(Math.random()*ch.length)]).join('');}
 async function roomCreate(name){
   let code,snap;
   do{code=mkCode();snap=await get(ref(db,`${RP}/${code}`));}while(snap.exists());
@@ -610,7 +610,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     <div class="jc-state vis" id="jmb-st-entry">
       <div class="jc-entry-title">📺 JUMBOTRON</div>
       <div class="jc-entry-sub">Enter room code to watch live</div>
-      <input class="jc-code-input" id="jmb-code-input" type="text" maxlength="4" placeholder="ABCD" autocomplete="off" spellcheck="false">
+      <input class="jc-code-input" id="jmb-code-input" type="text" maxlength="4" placeholder="1234" inputmode="numeric" pattern="[0-9]*" autocomplete="off" spellcheck="false">
       <button class="btn-primary" id="btn-jmb-connect" style="width:200px;margin-top:4px">CONNECT</button>
     </div>
     <div class="jc-state" id="jmb-st-waiting">
@@ -629,7 +629,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       </div>
     </div>
     <div class="jc-state" id="jmb-st-done">
-      <div class="jc-done-title">🏆 Game Complete!</div>
+      <div class="jc-done-title">🏆 FINAL RESULTS</div>
       <div class="jc-winner" id="jmb-winner-text">—</div>
     </div>
   </div>
@@ -655,7 +655,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
   <div class="lobby-title">MULTIPLAYER</div><div class="lobby-sub">Casino Royale Edition</div>
   <div class="lobby-card"><div class="lobby-card-title">🎰 Host a Table</div><p>Create a private room and share the code.</p><button class="btn-primary" id="btn-host">CREATE ROOM</button></div>
   <div class="lobby-divider">— OR —</div>
-  <div class="lobby-card"><div class="lobby-card-title">🎟️ Join a Table</div><p>Enter the 4-letter code from your host.</p><div class="code-input-wrap"><input type="text" id="inp-room-code" maxlength="4" placeholder="ABCD" autocomplete="off" autocorrect="off" spellcheck="false"></div><button class="btn-primary" id="btn-join">JOIN ROOM</button></div>
+  <div class="lobby-card"><div class="lobby-card-title">🎟️ Join a Table</div><p>Enter the 4-digit code from your host.</p><div class="code-input-wrap"><input type="text" id="inp-room-code" maxlength="4" placeholder="1234" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" spellcheck="false"></div><button class="btn-primary" id="btn-join">JOIN ROOM</button></div>
 </div>
 
 <!-- WAITING ROOM -->
@@ -759,7 +759,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 <!-- END SCREEN — Post-game lobby -->
 <div id="screen-end" class="screen">
   <div class="end-icon">🏆</div>
-  <div class="end-title">GAME OVER</div>
+  <div class="end-title">FINAL RESULTS</div>
   <div class="end-player-label" id="end-name">Player</div>
   <!-- Grand leaderboard — populated by showEnd(ranked) -->
   <div class="end-leaderboard-box" id="end-leaderboard-box">
@@ -1046,7 +1046,7 @@ function closeScoreboard(){document.getElementById('screen-scoreboard').classLis
 let roomCode=null,roomPlayerId=null,roomIsHost=false,roomActivePid=null,roomUnsub=null;
 function openLobby(){const name=document.getElementById('inp-name').value.trim();if(!name){showToast('Enter your name first!');return;}Audio.uiTick();Haptics.tick();playerName=name;localStorage.setItem('bazinco_name',name);showScreen('screen-lobby');}
 async function doHost(){if(!window.CloudRoom){showToast('No connection');return;}const btn=document.getElementById('btn-host');btn.textContent='Creating…';btn.disabled=true;const r=await window.CloudRoom.roomCreate(playerName);btn.textContent='CREATE ROOM';btn.disabled=false;if(r.error){showToast(r.error,2800);return;}roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=true;openWaitingRoom();}
-async function doJoin(){if(!window.CloudRoom){showToast('No connection');return;}const code=document.getElementById('inp-room-code').value.trim().toUpperCase();if(code.length!==4){showToast('Enter a 4-letter code');return;}const btn=document.getElementById('btn-join');btn.textContent='Joining…';btn.disabled=true;const r=await window.CloudRoom.roomJoin(code,playerName);btn.textContent='JOIN ROOM';btn.disabled=false;if(r.error){showToast(r.error,2800);return;}roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;openWaitingRoom();}
+async function doJoin(){if(!window.CloudRoom){showToast('No connection');return;}const code=document.getElementById('inp-room-code').value.trim();if(code.length!==4){showToast('Enter a 4-digit code');return;}const btn=document.getElementById('btn-join');btn.textContent='Joining…';btn.disabled=true;const r=await window.CloudRoom.roomJoin(code,playerName);btn.textContent='JOIN ROOM';btn.disabled=false;if(r.error){showToast(r.error,2800);return;}roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;openWaitingRoom();}
 function openWaitingRoom(){
   showScreen('screen-waiting');
   document.getElementById('waiting-title').textContent=roomIsHost?'YOUR TABLE':'WAITING ROOM';
@@ -1122,8 +1122,8 @@ function jmbSetState(st){['entry','waiting','playing','done'].forEach(s=>{const 
 function openJumbotron(){Audio.uiTick();Haptics.tick();document.getElementById('screen-jumbotron').classList.add('active');jmbSetState('entry');}
 function closeJumbotron(){Audio.uiTick();Haptics.tick();if(jmbUnsub){jmbUnsub();jmbUnsub=null;}document.getElementById('screen-jumbotron').classList.remove('active');document.getElementById('jmb-room-code').textContent='—';}
 function jmbConnect(){
-  const code=document.getElementById('jmb-code-input').value.trim().toUpperCase();
-  if(code.length!==4){showToast('Enter a 4-letter code');return;}
+  const code=document.getElementById('jmb-code-input').value.trim();
+  if(code.length!==4){showToast('Enter a 4-digit code');return;}
   if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
   document.getElementById('jmb-room-code').textContent=code;
   jmbSetState('waiting');
@@ -1159,7 +1159,7 @@ function jmbOnRoomUpdate(room){
     jmbSetState('done');
     const ranked=[...entries].sort((a,b)=>jmbRunScore(b[1])-jmbRunScore(a[1]));
     const lines=ranked.map(([pid,p],i)=>{const medals=['🥇','🥈','🥉'];return`${medals[i]||`${i+1}.`} ${safeName(pid,p)}: ${jmbRunScore(p)} pts`;});
-    document.getElementById('jmb-winner-text').textContent=lines.join('  ');
+    document.getElementById('jmb-winner-text').innerHTML=lines.join('<br><br>');
     return;
   }
   jmbSetState('playing');
