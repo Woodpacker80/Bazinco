@@ -8,13 +8,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase,ref,push,query,orderByChild,limitToLast,onValue,set,update,remove,get,onDisconnect }
+import { getDatabase,ref,push,onValue,set,update,remove,get,onDisconnect }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 const app=initializeApp({apiKey:"AIzaSyDWH816XM4PokJKDZHSLjYwqxqPDPMCfgg",authDomain:"bazinco-280f9.firebaseapp.com",databaseURL:"https://bazinco-280f9-default-rtdb.europe-west1.firebasedatabase.app",projectId:"bazinco-280f9",storageBucket:"bazinco-280f9.firebasestorage.app",messagingSenderId:"374130581654",appId:"1:374130581654:web:3a528a38bea7af60a722b7"});
 const db=getDatabase(app);
 const SP="bazinco/scores",RP="bazinco/rooms";
 async function cloudAddScore(name,score){const date=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});try{await push(ref(db,SP),{name,score,date,ts:Date.now()});}catch(e){}}
-function cloudWatchScores(cb){const q=query(ref(db,SP),orderByChild("score"),limitToLast(20));return onValue(q,snap=>{if(!snap.exists()){cb([]);return;}const a=[];snap.forEach(c=>a.push(c.val()));a.sort((x,y)=>y.score-x.score);cb(a.slice(0,10));},()=>cb(null));}
+function cloudWatchScores(cb){return onValue(ref(db,SP),snap=>{if(!snap.exists()){cb([]);return;}const a=[];snap.forEach(c=>{const v=c.val();if(v&&typeof v.score==="number")a.push(v);});a.sort((x,y)=>y.score-x.score);cb(a.slice(0,10));},(err)=>{console.error("FIREBASE READ ERROR:",err);cb(null);});}
 function mkCode(){const ch='0123456789';return Array.from({length:4},()=>ch[Math.floor(Math.random()*ch.length)]).join('');}
 async function roomCreate(name){
   let code,snap;
