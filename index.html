@@ -16,11 +16,11 @@ const SP="bazinco/scores",RP="bazinco/rooms";
 async function cloudAddScore(name,score){const date=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});try{await push(ref(db,SP),{name,score,date,ts:Date.now()});}catch(e){}}
 function cloudWatchScores(cb){return onValue(ref(db,SP),snap=>{if(!snap.exists()){cb([]);return;}const a=[];snap.forEach(c=>{const v=c.val();if(v&&typeof v.score==="number")a.push(v);});a.sort((x,y)=>y.score-x.score);cb(a.slice(0,10));},(err)=>{console.error("FIREBASE READ ERROR:",err);cb(null);});}
 function mkCode(){const ch='0123456789';return Array.from({length:4},()=>ch[Math.floor(Math.random()*ch.length)]).join('');}
-async function roomCreate(name){
+async function roomCreate(name,deviceId){
   let code,snap;
   do{code=mkCode();snap=await get(ref(db,`${RP}/${code}`));}while(snap.exists());
   const pid=push(ref(db,`${RP}/${code}/players`)).key;
-  await set(ref(db,`${RP}/${code}`),{host:pid,status:'waiting',activePid:null,roundNum:1,turnOrder:{},createdAt:Date.now(),players:{[pid]:{name,finalScore:null,scores:{},ts:Date.now()}}});
+  await set(ref(db,`${RP}/${code}`),{host:pid,status:'waiting',activePid:null,roundNum:1,turnOrder:{},createdAt:Date.now(),players:{[pid]:{name,finalScore:null,scores:{},ts:Date.now(),deviceId:deviceId||null}}});
   return{code,playerId:pid};
 }
 async function roomCreateEmpty(){
@@ -29,16 +29,27 @@ async function roomCreateEmpty(){
   await set(ref(db,`${RP}/${code}`),{host:null,status:'waiting',activePid:null,roundNum:1,turnOrder:{},createdAt:Date.now(),players:{}});
   return{code};
 }
-async function roomJoin(code,name){
+async function roomJoin(code,name,deviceId){
   const snap=await get(ref(db,`${RP}/${code}`));
   if(!snap.exists())return{error:'Room not found.'};
-  if(snap.val().status!=='waiting')return{error:'Game already started.'};
-  if(Object.keys(snap.val().players||{}).length>=8)return{error:'Room full (max 8).'};
+  const room=snap.val();
+  if(room.status!=='waiting')return{error:'Game already started.'};
+  if(deviceId&&room.bans&&room.bans[deviceId])return{error:'You have been removed from this room.'};
+  if(Object.keys(room.players||{}).length>=8)return{error:'Room full (max 8).'};
   const pid=push(ref(db,`${RP}/${code}/players`)).key;
-  await set(ref(db,`${RP}/${code}/players/${pid}`),{name,finalScore:null,scores:{},ts:Date.now()});
+  await set(ref(db,`${RP}/${code}/players/${pid}`),{name,finalScore:null,scores:{},ts:Date.now(),deviceId:deviceId||null});
   // onDisconnect remove intentionally omitted — preserves player node if mobile screen sleeps
   return{code,playerId:pid};
 }
+async function roomKick(code,pid){
+  try{
+    const snap=await get(ref(db,`${RP}/${code}/players/${pid}`));
+    const deviceId=snap.exists()?snap.val().deviceId:null;
+    await remove(ref(db,`${RP}/${code}/players/${pid}`));
+    if(deviceId)await set(ref(db,`${RP}/${code}/bans/${deviceId}`),true);
+  }catch(e){}
+}
+async function roomClearBans(code){try{await remove(ref(db,`${RP}/${code}/bans`));}catch(e){}}
 async function roomStart(code){
   const snap=await get(ref(db,`${RP}/${code}`));if(!snap.exists())return;
   const sorted=Object.entries(snap.val().players||{}).sort((a,b)=>a[1].ts-b[1].ts).map(([p])=>p);
@@ -141,7 +152,7 @@ function roomListen(code,cb){
   });
 }
 window.CloudScores={cloudAddScore,cloudWatchScores};
-window.CloudRoom={roomCreate,roomCreateEmpty,roomJoin,roomStart,roomBankScore,roomSaveFinalScore,roomBroadcastDice,roomCleanup,roomListen,roomLeave,roomRestart};
+window.CloudRoom={roomCreate,roomCreateEmpty,roomJoin,roomKick,roomClearBans,roomStart,roomBankScore,roomSaveFinalScore,roomBroadcastDice,roomCleanup,roomListen,roomLeave,roomRestart};
 </script>
 <style>
 :root{--felt:#2d6a3f;--felt2:#245532;--felt3:#1a3d24;--felt-light:#358048;--tray-rim:#1a3020;--bg:#0F2A55;--surface:#173B75;--surface2:#1E4B8F;--border:#2D65BA;--header-bg:#0A1C3A;--gold:#c9972a;--gold2:#e8bc55;--gold3:#f5d878;--text:#ffffff;--text2:#a8c8ff;--muted:#6899dd;--held-bdr:#4abf68;--radius:13px;--shadow:0 8px 32px rgba(0,0,0,0.6);}
@@ -153,7 +164,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .screen.active{display:flex;flex-direction:column;}
 /* TITLE */
 #screen-name{align-items:center;justify-content:center;padding:32px 28px 40px;gap:20px;background:var(--bg);}
-.logo-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;animation:logoReveal 0.9s cubic-bezier(0.16,1,0.3,1) both;}
+.logo-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;animation:logoReveal 0.9s cubic-bezier(0.16,1,0.3,1) both;}
 @keyframes logoReveal{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
 .logo-svg-container{filter:drop-shadow(0 16px 40px rgba(0,0,0,0.8));overflow:visible;}
 .logo-text{text-align:center;}
@@ -411,6 +422,15 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .lobby-name-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,151,42,0.12);}
 .tv-watch-link{background:none;border:none;color:var(--muted);font-family:'Nunito',sans-serif;font-size:12px;letter-spacing:0.5px;text-decoration:underline;cursor:pointer;padding:4px;text-align:center;}
 .tv-watch-link:active{color:var(--gold2);}
+.lobby-columns{width:100%;max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px;align-items:start;}
+.lobby-col{display:flex;flex-direction:column;gap:18px;}
+.lobby-col .qr-wrap img{width:110px;height:110px;}
+.lobby-col .player-list-title{margin-bottom:4px;}
+#tv-host-player-list{display:flex;flex-direction:column;gap:10px;}
+#tv-host-player-list .player-item{justify-content:space-between;}
+.kick-btn{background:transparent;border:1px solid rgba(190,22,34,0.4);color:#e06a72;border-radius:8px;font-size:10px;letter-spacing:1px;padding:5px 9px;cursor:pointer;text-transform:uppercase;}
+.kick-btn:active{background:rgba(190,22,34,0.15);}
+@media (max-width:720px){.lobby-columns{grid-template-columns:1fr;gap:22px;}}
 .player-list{display:flex;flex-direction:column;gap:8px;width:100%;max-width:480px;margin:0 auto;}
 .player-list-title{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--text2);text-align:center;}
 .player-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;animation:fadeUp 0.3s cubic-bezier(0.16,1,0.3,1) both;}
@@ -597,7 +617,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
   <div class="logo-wrap">
     <div class="logo-text"><div class="logo-title">BAZINCO!</div><div class="logo-sub">The Dice Game</div></div>
     <div class="logo-svg-container">
-      <svg width="216" height="158" viewBox="-10 0 300 220" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+      <svg width="260" height="191" viewBox="-10 0 300 220" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
         <defs>
           <linearGradient id="lG1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5c2e10"/><stop offset="45%" stop-color="#3d1e08"/><stop offset="100%" stop-color="#200e04"/></linearGradient>
           <linearGradient id="lGInner" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0a0402"/><stop offset="100%" stop-color="#050200"/></linearGradient>
@@ -630,8 +650,6 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       </svg>
     </div>
   </div>
-  <button class="btn-primary" id="btn-how-to-play" style="width:100%;max-width:480px">📖 HOW TO PLAY &amp; SETUP</button>
-
   <!-- QR-SCAN ARRIVAL: shown only when landing via ?room=XXXX -->
   <div class="join-banner" id="qr-join-banner" style="display:none">
     <div class="jb-label">🎟️ Joining Room</div>
@@ -640,12 +658,30 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     <button class="btn-primary" id="btn-multiplayer" style="width:100%;margin-top:10px">✅ JOIN GAME</button>
   </div>
 
-  <!-- DYNAMIC LOBBY ZONE: default buttons, or one of the contextual panels below -->
+  <!-- DYNAMIC LOBBY ZONE: 3-column tablet/TV layout, or the solo name panel -->
   <div class="name-form" id="lobby-zone">
-    <div id="lobby-default-buttons" style="width:100%;display:flex;flex-direction:column;gap:12px;">
-      <button class="btn-secondary" id="btn-multiplayer-menu">👥 MULTIPLAYER</button>
-      <button class="btn-secondary" id="btn-tv-view">📺 TV VIEW — JUMBOTRON</button>
-      <button class="btn-secondary" id="btn-solo-open">🎲 PRACTICE SOLO</button>
+    <div class="lobby-columns" id="lobby-columns">
+      <!-- LEFT: room creation -->
+      <div class="lobby-col" id="col-create">
+        <button class="btn-primary" id="btn-create-room" style="width:100%">🆕 CREATE ROOM</button>
+        <div class="qr-wrap" id="create-qr-wrap" style="display:none">
+          <img id="create-qr-img" alt="QR code to join this room">
+        </div>
+        <button class="btn-primary" id="btn-tv-host-start" style="width:100%;display:none" disabled>🎲 START GAME</button>
+        <button class="lobby-back" id="btn-tv-host-close" style="display:none">✕ CANCEL ROOM</button>
+      </div>
+      <!-- CENTER: live player list -->
+      <div class="lobby-col" id="col-players" style="display:none">
+        <div class="player-list-title">Players at the Table</div>
+        <div id="tv-host-player-list"></div>
+        <button class="lobby-back" id="btn-clear-bans">🚫 CLEAR ALL BANS</button>
+      </div>
+      <!-- RIGHT: menu -->
+      <div class="lobby-col" id="col-menu">
+        <button class="btn-primary" id="btn-how-to-play">📖 HOW TO PLAY &amp; SETUP</button>
+        <button class="btn-secondary" id="btn-multiplayer-menu">👥 MULTIPLAYER</button>
+        <button class="btn-secondary" id="btn-solo-open">🎲 PRACTICE SOLO</button>
+      </div>
     </div>
 
     <!-- PRACTICE SOLO: name asked only at this moment -->
@@ -655,34 +691,8 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="btn-primary" id="btn-start">🎲 START SOLO GAME</button>
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
-
-    <!-- TV HOSTING: room auto-created the moment this panel opens -->
-    <div id="tv-host-panel" style="display:none;width:100%;flex-direction:column;gap:14px;">
-      <div class="room-code-display">
-        <div class="room-code-label">Room Code — Share this!</div>
-        <div class="room-code-value" id="tv-host-code">—</div>
-        <div class="qr-wrap" id="tv-host-qr-wrap" style="display:none">
-          <img id="tv-host-qr-img" alt="QR code to join this room">
-          <div class="qr-cap">Scan to join on your phone</div>
-        </div>
-      </div>
-      <div class="player-list"><div class="player-list-title">Players at the Table</div><div id="tv-host-player-list"></div></div>
-      <div class="waiting-status" id="tv-host-status">Waiting for players<span class="waiting-dots"></span></div>
-      <button class="btn-primary" id="btn-tv-host-start" style="width:100%" disabled>🎲 START GAME</button>
-      <div style="font-size:11px;color:var(--muted);text-align:center;letter-spacing:1px">Min. 2 players required</div>
-      <button class="tv-watch-link" id="btn-tv-watch-open">Watch a game already in progress instead</button>
-      <button class="lobby-back" id="btn-tv-host-close">✕ CLOSE ROOM</button>
-    </div>
-
-    <!-- WATCH EXISTING (phone-hosted) ROOM ON THIS SCREEN AS A SPECTATOR -->
-    <div id="tv-watch-panel" style="display:none;width:100%;flex-direction:column;gap:12px;align-items:center;">
-      <div style="font-size:13px;color:var(--text2);letter-spacing:1px">Enter room code to watch live</div>
-      <input class="jc-code-input" id="inp-watch-code" type="text" maxlength="4" placeholder="1234" inputmode="numeric" pattern="[0-9]*" autocomplete="off" spellcheck="false">
-      <button class="btn-primary" id="btn-watch-connect" style="width:100%">CONNECT</button>
-      <button class="lobby-back" id="btn-watch-back">← BACK</button>
-    </div>
   </div>
-  <div class="version-tag">v 6.18 Cobalt · Lobby Redesign</div>
+  <div class="version-tag">v 6.19 Cobalt · Tablet Lobby</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -1200,12 +1210,22 @@ let roomCode=null,roomPlayerId=null,roomIsHost=false,roomActivePid=null,roomUnsu
 // home screen; it only appears inline, in the moment, for Host a Table / Join a Table
 // (phone-only fallback) and Practice Solo. Guests scanning a QR get a name field inline too.
 function qrJoinUrl(code){return location.origin+location.pathname+'?room='+code;}
-function qrImgSrc(code){return 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data='+encodeURIComponent(qrJoinUrl(code));}
+function qrImgSrc(code,size=260){return 'https://api.qrserver.com/v1/create-qr-code/?size='+size+'x'+size+'&data='+encodeURIComponent(qrJoinUrl(code));}
+// Persistent per-browser id (not per join) so a kicked/banned player can't just rescan
+// the QR and get a fresh player id — bans are keyed on this, stored in localStorage so
+// it survives reloads on the same device. Clearing site data or using another device/
+// browser resets it — acceptable for a party game, same spirit as Haarlem Hold'em's
+// own per-device ban approach.
+function getDeviceId(){
+  let id=localStorage.getItem('bazinco_device_id');
+  if(!id){id='dev_'+Date.now().toString(36)+Math.random().toString(36).slice(2);localStorage.setItem('bazinco_device_id',id);}
+  return id;
+}
 const pendingRoomCode=(()=>{const c=new URLSearchParams(location.search).get('room');return(c&&/^\d{4}$/.test(c))?c:null;})();
 if(pendingRoomCode){
   document.getElementById('qr-join-banner').style.display='block';
   document.getElementById('qr-join-code').textContent=pendingRoomCode;
-  document.getElementById('lobby-default-buttons').style.display='none';
+  document.getElementById('lobby-columns').style.display='none';
 }
 async function doJoinFromQR(){
   const name=document.getElementById('inp-name-qr').value.trim();
@@ -1214,7 +1234,7 @@ async function doJoinFromQR(){
   if(!window.CloudRoom){showToast('No connection');return;}
   const btn=document.getElementById('btn-multiplayer');
   btn.textContent='Joining…';btn.disabled=true;
-  const r=await window.CloudRoom.roomJoin(pendingRoomCode,name);
+  const r=await window.CloudRoom.roomJoin(pendingRoomCode,name,getDeviceId());
   btn.disabled=false;btn.textContent='✅ JOIN GAME';
   if(r.error){showToast(r.error,2800);return;}
   roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;openWaitingRoom();
@@ -1225,7 +1245,7 @@ async function doHost(){
   if(!window.CloudRoom){showToast('No connection');return;}
   playerName=name;localStorage.setItem('bazinco_name',name);
   const btn=document.getElementById('btn-host');btn.textContent='Creating…';btn.disabled=true;
-  const r=await window.CloudRoom.roomCreate(name);
+  const r=await window.CloudRoom.roomCreate(name,getDeviceId());
   btn.textContent='CREATE ROOM';btn.disabled=false;
   if(r.error){showToast(r.error,2800);return;}
   roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=true;openWaitingRoom();
@@ -1238,43 +1258,55 @@ async function doJoin(){
   if(code.length!==4){showToast('Enter a 4-digit code');return;}
   playerName=name;localStorage.setItem('bazinco_name',name);
   const btn=document.getElementById('btn-join');btn.textContent='Joining…';btn.disabled=true;
-  const r=await window.CloudRoom.roomJoin(code,name);
+  const r=await window.CloudRoom.roomJoin(code,name,getDeviceId());
   btn.textContent='JOIN ROOM';btn.disabled=false;
   if(r.error){showToast(r.error,2800);return;}
   roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;openWaitingRoom();
 }
 
-// TV SELF-HOSTING: tapping "TV View" auto-creates an empty room (no player attached) and
-// shows its code/QR/player-list/Start-Game right in the lobby zone. Whoever's at the tablet
-// controls Start Game / Close Room directly — no phone ever has to "be the host."
+// TV SELF-HOSTING: tapping "Create Room" auto-creates an empty room (no player attached)
+// and shows its QR/player-list/Start-Game right in the 3-column lobby. Whoever's at the
+// tablet controls Start Game / Cancel Room directly — no phone ever has to "be the host."
 let tvRoomCode=null,tvUnsub=null;
 async function tvHostStart(){
   Audio.unlock();Audio.uiTick();Haptics.tick();
-  document.getElementById('lobby-default-buttons').style.display='none';
-  document.getElementById('tv-host-panel').style.display='flex';
-  document.getElementById('tv-host-code').textContent='····';
-  document.getElementById('tv-host-qr-wrap').style.display='none';
+  document.getElementById('btn-create-room').style.display='none';
+  document.getElementById('create-qr-wrap').style.display='none';
+  document.getElementById('col-players').style.display='flex';
   document.getElementById('tv-host-player-list').innerHTML='';
-  document.getElementById('tv-host-status').textContent='Creating room…';
   if(!window.CloudRoom){showToast('No connection');return;}
   const r=await window.CloudRoom.roomCreateEmpty();
   tvRoomCode=r.code;
-  document.getElementById('tv-host-code').textContent=tvRoomCode;
-  document.getElementById('tv-host-qr-img').src=qrImgSrc(tvRoomCode);
-  document.getElementById('tv-host-qr-wrap').style.display='flex';
+  document.getElementById('create-qr-img').src=qrImgSrc(tvRoomCode,140);
+  document.getElementById('create-qr-wrap').style.display='flex';
+  document.getElementById('btn-tv-host-start').style.display='block';
+  document.getElementById('btn-tv-host-close').style.display='flex';
   if(tvUnsub){tvUnsub();tvUnsub=null;}
   tvUnsub=window.CloudRoom.roomListen(tvRoomCode,tvOnRoomUpdate);
+}
+async function tvKickPlayer(pid){
+  Audio.uiTick();Haptics.tick();
+  if(!tvRoomCode||!window.CloudRoom)return;
+  if(!confirm('Kick this player? They will not be able to rejoin until bans are cleared.'))return;
+  await window.CloudRoom.roomKick(tvRoomCode,pid);
 }
 function tvOnRoomUpdate(room){
   if(!room)return;
   if(room.status==='playing'){tvEnterJumbotronDisplay();return;}
   const players=room.players||{};
   const entries=Object.entries(players).sort((a,b)=>a[1].ts-b[1].ts);
-  document.getElementById('tv-host-player-list').innerHTML=entries.map(([,p])=>
-    `<div class="player-item"><div class="player-avatar">🎲</div><div class="player-item-name">${p.name||'?'}</div></div>`
-  ).join('');
-  document.getElementById('tv-host-status').textContent=entries.length
-    ?`${entries.length} player${entries.length>1?'s':''} joined`:'Waiting for players';
+  const listEl=document.getElementById('tv-host-player-list');
+  listEl.innerHTML='';
+  entries.forEach(([pid,p])=>{
+    const div=document.createElement('div');
+    div.className='player-item';
+    div.innerHTML=`<div class="player-avatar">🎲</div><div class="player-item-name">${p.name||'?'}</div>`;
+    const kickBtn=document.createElement('button');
+    kickBtn.className='kick-btn';kickBtn.textContent='KICK';
+    kickBtn.addEventListener('click',()=>tvKickPlayer(pid));
+    div.appendChild(kickBtn);
+    listEl.appendChild(div);
+  });
   const startBtn=document.getElementById('btn-tv-host-start');
   const ok=entries.length>=2;
   startBtn.disabled=!ok;startBtn.style.opacity=ok?'1':'0.4';
@@ -1291,8 +1323,11 @@ async function tvHostClose(){
   if(tvUnsub){tvUnsub();tvUnsub=null;}
   if(tvRoomCode&&window.CloudRoom)await window.CloudRoom.roomCleanup(tvRoomCode);
   tvRoomCode=null;
-  document.getElementById('tv-host-panel').style.display='none';
-  document.getElementById('lobby-default-buttons').style.display='flex';
+  document.getElementById('btn-create-room').style.display='block';
+  document.getElementById('create-qr-wrap').style.display='none';
+  document.getElementById('btn-tv-host-start').style.display='none';
+  document.getElementById('btn-tv-host-close').style.display='none';
+  document.getElementById('col-players').style.display='none';
 }
 function openWaitingRoom(){
   showScreen('screen-waiting');
@@ -1382,8 +1417,11 @@ function closeJumbotron(){
     if(!confirm('Close the room and end the session for all players?'))return;
     if(window.CloudRoom)window.CloudRoom.roomCleanup(tvRoomCode);
     tvRoomCode=null;
-    document.getElementById('tv-host-panel').style.display='none';
-    document.getElementById('lobby-default-buttons').style.display='flex';
+    document.getElementById('btn-create-room').style.display='block';
+    document.getElementById('create-qr-wrap').style.display='none';
+    document.getElementById('btn-tv-host-start').style.display='none';
+    document.getElementById('btn-tv-host-close').style.display='none';
+    document.getElementById('col-players').style.display='none';
   }
   if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
   document.getElementById('screen-jumbotron').classList.remove('active');
@@ -1677,43 +1715,30 @@ function closeDropdown(){document.getElementById('dropdown-menu').classList.remo
 document.getElementById('btn-how-to-play').addEventListener('click',()=>{Audio.uiTick();document.getElementById('screen-rules').classList.add('active');});
 document.getElementById('btn-solo-open').addEventListener('click',()=>{
   Audio.uiTick();Haptics.tick();
-  document.getElementById('lobby-default-buttons').style.display='none';
+  document.getElementById('lobby-columns').style.display='none';
   document.getElementById('solo-name-panel').style.display='flex';
   const saved=localStorage.getItem('bazinco_name');if(saved)document.getElementById('inp-name-solo').value=saved;
 });
 document.getElementById('btn-solo-back').addEventListener('click',()=>{
   Audio.uiTick();Haptics.tick();
   document.getElementById('solo-name-panel').style.display='none';
-  document.getElementById('lobby-default-buttons').style.display='flex';
+  document.getElementById('lobby-columns').style.display='grid';
 });
 document.getElementById('btn-start').addEventListener('click',()=>{const name=document.getElementById('inp-name-solo').value.trim();if(!name){showToast('Enter your name first!');return;}Audio.unlock();Audio.uiTick();Haptics.tick();playerName=name;localStorage.setItem('bazinco_name',name);resetRoomState();initGame();});
 document.getElementById('inp-name-solo').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-start').click();});
 document.getElementById('btn-multiplayer').addEventListener('click',()=>{Audio.unlock();doJoinFromQR();});
 document.getElementById('inp-name-qr').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-multiplayer').click();});
 document.getElementById('btn-multiplayer-menu').addEventListener('click',()=>{Audio.unlock();Audio.uiTick();Haptics.tick();showScreen('screen-lobby');});
-document.getElementById('btn-tv-view').addEventListener('click',()=>{tvHostStart();});
+document.getElementById('btn-create-room').addEventListener('click',()=>{tvHostStart();});
 document.getElementById('btn-tv-host-start').addEventListener('click',async()=>{Audio.unlock();Audio.uiTick();Haptics.tick();if(tvRoomCode&&window.CloudRoom)await window.CloudRoom.roomStart(tvRoomCode);});
 document.getElementById('btn-tv-host-close').addEventListener('click',()=>{tvHostClose();});
-document.getElementById('btn-tv-watch-open').addEventListener('click',async()=>{
+document.getElementById('btn-clear-bans').addEventListener('click',async()=>{
   Audio.uiTick();Haptics.tick();
-  if(tvUnsub){tvUnsub();tvUnsub=null;}
-  if(tvRoomCode&&window.CloudRoom){await window.CloudRoom.roomCleanup(tvRoomCode);tvRoomCode=null;}
-  document.getElementById('tv-host-panel').style.display='none';
-  document.getElementById('tv-watch-panel').style.display='flex';
+  if(!tvRoomCode||!window.CloudRoom)return;
+  if(!confirm('Clear all bans for this room? Previously kicked players will be able to rejoin.'))return;
+  await window.CloudRoom.roomClearBans(tvRoomCode);
+  showToast('Bans cleared',2000);
 });
-document.getElementById('btn-watch-back').addEventListener('click',()=>{
-  Audio.uiTick();Haptics.tick();
-  document.getElementById('tv-watch-panel').style.display='none';
-  document.getElementById('lobby-default-buttons').style.display='flex';
-});
-document.getElementById('btn-watch-connect').addEventListener('click',()=>{
-  const code=document.getElementById('inp-watch-code').value.trim();
-  if(code.length!==4){showToast('Enter a 4-digit code');return;}
-  document.getElementById('jmb-code-input').value=code;
-  document.getElementById('screen-jumbotron').classList.add('active');
-  jmbConnect();
-});
-document.getElementById('inp-watch-code').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-watch-connect').click();});
 document.getElementById('btn-lobby-back').addEventListener('click',()=>{Audio.uiTick();Haptics.tick();showScreen('screen-name');});
 document.getElementById('btn-host').addEventListener('click',()=>{Audio.uiTick();Haptics.tick();doHost();});
 document.getElementById('btn-join').addEventListener('click',()=>{Audio.uiTick();Haptics.tick();doJoin();});
