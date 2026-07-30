@@ -1737,27 +1737,33 @@ function initGame(){
   const crBtn=document.getElementById('dd-closeroom');if(crBtn)crBtn.style.display=(roomCode&&roomIsHost)?'flex':'none';
   renderDiceRow();renderRollUI();renderSheet();showScreen('screen-game');
   try{document.getElementById('screen-game').scrollTo({top:0,behavior:'instant'});}catch(e){try{document.getElementById('screen-game').scrollTop=0;}catch(e2){}}
-  // TARGETED DIAGNOSTIC for the "blank body below header" bug — checks shortly after
-  // paint whether the rows genuinely exist and whether anything's making them invisible.
-  // Runs on every game start (harmless when everything's fine — banner only appears
-  // when something's actually wrong), left in until that bug is confirmed fixed.
-  setTimeout(()=>{
-    try{
-      const ur=document.getElementById('upper-rows'),lr=document.getElementById('lower-rows'),dr=document.getElementById('dice-row');
-      const sg=document.getElementById('screen-game'),dt=document.getElementById('dice-tray');
-      const bad=ur.children.length===0||lr.children.length===0||dr.children.length===0;
-      if(bad){
-        const csSg=getComputedStyle(sg),csDt=dt?getComputedStyle(dt):null;
-        const banner=document.createElement('div');
-        banner.style.cssText='position:fixed;top:0;left:0;right:0;background:#e67e22;color:#111;font-size:12px;line-height:1.5;padding:10px;z-index:999999;white-space:pre-wrap;font-family:monospace;max-height:70vh;overflow:auto;';
-        banner.textContent='DIAGNOSTIC (rows empty)\n'
-          +'upper-rows children='+ur.children.length+' lower-rows children='+lr.children.length+' dice-row children='+dr.children.length+'\n'
-          +'#screen-game active='+sg.classList.contains('active')+' display='+csSg.display+' height='+csSg.height+' bg='+csSg.backgroundColor+'\n'
-          +'#dice-tray bg='+(csDt?csDt.backgroundColor:'N/A')+' w='+(csDt?csDt.width:'N/A')+' h='+(csDt?csDt.height:'N/A');
-        document.body.appendChild(banner);
-      }
-    }catch(e){}
-  },300);
+  // TARGETED DIAGNOSTIC for the "blank body below header" bug — logs the real state of
+  // the game DOM at three checkpoints (immediately, +300ms, +2500ms) into one growing
+  // on-screen banner, so a before/after picture is visible instead of a single snapshot.
+  // Left in until that bug is confirmed fixed; harmless — only appends when something's
+  // actually off from what a healthy game start should look like.
+  bazDiagLog('T+0ms (right after render)');
+  setTimeout(()=>bazDiagLog('T+300ms'),300);
+  setTimeout(()=>bazDiagLog('T+2500ms'),2500);
+}
+function bazDiagLog(label){
+  try{
+    const ur=document.getElementById('upper-rows'),lr=document.getElementById('lower-rows'),dr=document.getElementById('dice-row');
+    const sg=document.getElementById('screen-game'),dt=document.getElementById('dice-tray');
+    const bad=ur.children.length===0||lr.children.length===0||dr.children.length===0;
+    if(!bad&&label==='T+0ms (right after render)')return; // healthy start — stay silent
+    const csSg=getComputedStyle(sg),csDt=dt?getComputedStyle(dt):null;
+    const line=label+' — upper='+ur.children.length+' lower='+lr.children.length+' diceRow='+dr.children.length
+      +' | screen-game active='+sg.classList.contains('active')+' display='+csSg.display+' h='+csSg.height+' bg='+csSg.backgroundColor
+      +' | dice-tray bg='+(csDt?csDt.backgroundColor:'N/A')+' w='+(csDt?csDt.width:'N/A');
+    let banner=document.getElementById('bazDiagBanner');
+    if(!banner){
+      banner=document.createElement('div');banner.id='bazDiagBanner';
+      banner.style.cssText='position:fixed;top:0;left:0;right:0;background:#e67e22;color:#111;font-size:11px;line-height:1.5;padding:10px;z-index:999999;white-space:pre-wrap;font-family:monospace;max-height:70vh;overflow:auto;';
+      document.body.appendChild(banner);
+    }
+    banner.textContent+=(banner.textContent?'\n':'DIAGNOSTIC LOG\n')+line;
+  }catch(e){}
 }
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
 let _toastTimer=null;
