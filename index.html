@@ -390,6 +390,12 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .lobby-divider{width:100%;text-align:center;font-size:11px;color:var(--muted);letter-spacing:3px;}
 .room-code-display{width:100%;max-width:480px;margin:0 auto;background:var(--header-bg);border:2px solid var(--gold);border-radius:14px;padding:20px;text-align:center;box-shadow:0 0 24px rgba(201,151,42,0.2);}
 .room-code-label{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.qr-wrap{margin-top:14px;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.qr-wrap img{width:130px;height:130px;border-radius:10px;background:#fff;padding:6px;box-shadow:0 4px 16px rgba(0,0,0,0.3);}
+.qr-wrap .qr-cap{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.join-banner{width:100%;max-width:480px;margin:0 auto 4px;background:rgba(201,151,42,0.1);border:1.5px solid var(--gold);border-radius:12px;padding:12px 16px;text-align:center;}
+.join-banner .jb-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.join-banner .jb-code{font-family:'Cinzel',serif;font-size:22px;font-weight:900;color:var(--gold2);letter-spacing:4px;}
 .room-code-value{font-family:'Cinzel',serif;font-size:48px;font-weight:900;letter-spacing:12px;background:linear-gradient(160deg,var(--gold3),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 12px rgba(201,151,42,0.4));}
 .room-code-hint{font-size:11px;color:var(--muted);margin-top:8px;letter-spacing:1px;}
 .code-input-wrap{display:flex;justify-content:center;}
@@ -614,6 +620,10 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     </div>
     <div class="logo-text"><div class="logo-title">BAZINCO!</div><div class="logo-sub">The Dice Game</div></div>
   </div>
+  <div class="join-banner" id="qr-join-banner" style="display:none">
+    <div class="jb-label">🎟️ Joining Room</div>
+    <div class="jb-code" id="qr-join-code">—</div>
+  </div>
   <div class="name-form">
     <label for="inp-name">Your Name</label>
     <input type="text" id="inp-name" placeholder="Enter your name" maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
@@ -622,7 +632,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     <button class="btn-secondary" id="btn-tv-view">📺 TV VIEW — JUMBOTRON</button>
     <button class="btn-secondary" id="btn-start">🎲 PRACTICE SOLO</button>
   </div>
-  <div class="version-tag">v 6.16 Cobalt · Cloud Edition</div>
+  <div class="version-tag">v 6.17 Cobalt · QR Join</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -654,6 +664,10 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     <div class="jc-state" id="jmb-st-waiting">
       <div class="jc-wait-title">Waiting for host<span class="waiting-dots"></span></div>
       <div style="font-size:13px;color:var(--text2);letter-spacing:1px">Game will begin shortly</div>
+      <div class="qr-wrap" id="jmb-qr-wrap" style="display:none">
+        <img id="jmb-qr-img" alt="QR code to join this room">
+        <div class="qr-cap">Scan to join on your phone</div>
+      </div>
     </div>
     <div class="jc-state" id="jmb-st-playing">
       <div class="jc-active-banner">
@@ -708,6 +722,10 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     <div class="room-code-label">Room Code — Share this!</div>
     <div class="room-code-value" id="waiting-code-value">—</div>
     <div class="room-code-hint">Players enter this code to join</div>
+    <div class="qr-wrap" id="host-qr-wrap">
+      <img id="host-qr-img" alt="QR code to join this room">
+      <div class="qr-cap">Or scan to join instantly</div>
+    </div>
   </div>
   <div class="player-list"><div class="player-list-title">Players at the Table</div><div id="player-list-items"></div></div>
   <div class="waiting-status" id="waiting-main-status">Waiting<span class="waiting-dots"></span></div>
@@ -780,7 +798,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     <div class="rules-section-title">Setup Instructions</div>
     <div class="rules-card">
       <div class="rules-row"><div class="rules-row-name">1. Open a Room</div><div class="rules-row-desc">One player taps <strong>Multiplayer</strong> on their phone and creates a room. A 4-digit code appears — share it with everyone.</div></div>
-      <div class="rules-row"><div class="rules-row-name">2. Players Join</div><div class="rules-row-desc">Each other player taps <strong>Multiplayer</strong>, enters the room code and their name, and joins the lobby.</div></div>
+      <div class="rules-row"><div class="rules-row-name">2. Players Join</div><div class="rules-row-desc">Easiest way: scan the QR code shown on the Jumbotron with a phone camera — it opens the game and joins the room automatically, just add a name. Or tap <strong>Multiplayer</strong>, enter the room code and a name, and join the lobby manually.</div></div>
       <div class="rules-row"><div class="rules-row-name">3. Add the Jumbotron</div><div class="rules-row-desc">On a Smart TV or tablet, tap <strong>TV View — Jumbotron</strong> and enter the same room code. It will show live dice, scores, and standings for the whole room.</div></div>
       <div class="rules-row"><div class="rules-row-name">4. Host Starts</div><div class="rules-row-desc">Once everyone is in the lobby, the host taps <strong>Start Game</strong>. All devices lock in at the same moment — game on!</div></div>
     </div>
@@ -1126,6 +1144,32 @@ function closeScoreboard(){document.getElementById('screen-scoreboard').classLis
 
 // MULTIPLAYER
 let roomCode=null,roomPlayerId=null,roomIsHost=false,roomActivePid=null,roomUnsub=null;
+// V6.17: QR join — a room's join URL is https://woodpacker80.github.io/Bazinco/?room=XXXX .
+// The Jumbotron and the host's own waiting-room screen render this as a QR code so guests
+// can scan straight into the name field instead of typing a 4-digit code (mirrors the
+// Haarlem Hold'em join flow, adapted to keep Bazinco's multi-room support intact).
+function qrJoinUrl(code){return location.origin+location.pathname+'?room='+code;}
+function qrImgSrc(code){return 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data='+encodeURIComponent(qrJoinUrl(code));}
+const pendingRoomCode=(()=>{const c=new URLSearchParams(location.search).get('room');return(c&&/^\d{4}$/.test(c))?c:null;})();
+if(pendingRoomCode){
+  document.getElementById('qr-join-banner').style.display='block';
+  document.getElementById('qr-join-code').textContent=pendingRoomCode;
+  document.getElementById('btn-multiplayer').textContent='✅ JOIN GAME';
+  document.getElementById('btn-tv-view').style.display='none';
+  document.getElementById('btn-start').style.display='none';
+}
+async function doJoinFromQR(){
+  const name=document.getElementById('inp-name').value.trim();
+  if(!name){showToast('Enter your name first!');return;}
+  playerName=name;localStorage.setItem('bazinco_name',name);
+  if(!window.CloudRoom){showToast('No connection');return;}
+  const btn=document.getElementById('btn-multiplayer');
+  btn.textContent='Joining…';btn.disabled=true;
+  const r=await window.CloudRoom.roomJoin(pendingRoomCode,name);
+  btn.disabled=false;btn.textContent='✅ JOIN GAME';
+  if(r.error){showToast(r.error,2800);return;}
+  roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;openWaitingRoom();
+}
 function openLobby(){const name=document.getElementById('inp-name').value.trim();if(!name){showToast('Enter your name first!');return;}Audio.uiTick();Haptics.tick();playerName=name;localStorage.setItem('bazinco_name',name);showScreen('screen-lobby');}
 async function doHost(){if(!window.CloudRoom){showToast('No connection');return;}const btn=document.getElementById('btn-host');btn.textContent='Creating…';btn.disabled=true;const r=await window.CloudRoom.roomCreate(playerName);btn.textContent='CREATE ROOM';btn.disabled=false;if(r.error){showToast(r.error,2800);return;}roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=true;openWaitingRoom();}
 async function doJoin(){if(!window.CloudRoom){showToast('No connection');return;}const code=document.getElementById('inp-room-code').value.trim();if(code.length!==4){showToast('Enter a 4-digit code');return;}const btn=document.getElementById('btn-join');btn.textContent='Joining…';btn.disabled=true;const r=await window.CloudRoom.roomJoin(code,playerName);btn.textContent='JOIN ROOM';btn.disabled=false;if(r.error){showToast(r.error,2800);return;}roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;openWaitingRoom();}
@@ -1134,6 +1178,7 @@ function openWaitingRoom(){
   document.getElementById('waiting-title').textContent=roomIsHost?'YOUR TABLE':'WAITING ROOM';
   document.getElementById('waiting-code-display').style.display=roomIsHost?'block':'none';
   document.getElementById('waiting-code-value').textContent=roomCode;
+  document.getElementById('host-qr-img').src=qrImgSrc(roomCode);
   document.getElementById('host-start-wrap').style.display=roomIsHost?'block':'none';
   if(roomUnsub){roomUnsub();roomUnsub=null;}
   roomUnsub=window.CloudRoom.roomListen(roomCode,onRoomUpdate);
@@ -1218,6 +1263,8 @@ function jmbConnect(){
   if(code.length!==4){showToast('Enter a 4-digit code');return;}
   if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
   document.getElementById('jmb-room-code').textContent=code;
+  document.getElementById('jmb-qr-img').src=qrImgSrc(code);
+  document.getElementById('jmb-qr-wrap').style.display='flex';
   jmbSetState('waiting');
   let settled=false;
   const nft=setTimeout(()=>{if(!settled){jmbSetState('entry');document.getElementById('jmb-room-code').textContent='—';showToast('Room not found. Check the code.',3000);if(jmbUnsub){jmbUnsub();jmbUnsub=null;}}},3000);
@@ -1498,7 +1545,7 @@ function closeDropdown(){document.getElementById('dropdown-menu').classList.remo
 document.getElementById('btn-how-to-play').addEventListener('click',()=>{Audio.uiTick();document.getElementById('screen-rules').classList.add('active');});
 document.getElementById('btn-start').addEventListener('click',()=>{const name=document.getElementById('inp-name').value.trim();if(!name){showToast('Enter your name first!');return;}Audio.unlock();Audio.uiTick();Haptics.tick();playerName=name;localStorage.setItem('bazinco_name',name);resetRoomState();initGame();});
 document.getElementById('inp-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-start').click();});
-document.getElementById('btn-multiplayer').addEventListener('click',()=>{Audio.unlock();openLobby();});
+document.getElementById('btn-multiplayer').addEventListener('click',()=>{Audio.unlock();if(pendingRoomCode){doJoinFromQR();}else{openLobby();}});
 document.getElementById('btn-tv-view').addEventListener('click',()=>{Audio.unlock();openJumbotron();});
 document.getElementById('btn-lobby-back').addEventListener('click',()=>{Audio.uiTick();Haptics.tick();showScreen('screen-name');});
 document.getElementById('btn-host').addEventListener('click',()=>{Audio.uiTick();Haptics.tick();doHost();});
