@@ -422,7 +422,11 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .lobby-name-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,151,42,0.12);}
 .tv-watch-link{background:none;border:none;color:var(--muted);font-family:'Nunito',sans-serif;font-size:12px;letter-spacing:0.5px;text-decoration:underline;cursor:pointer;padding:4px;text-align:center;}
 .tv-watch-link:active{color:var(--gold2);}
-.lobby-columns{width:100%;max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px;align-items:start;}
+.lobby-columns{width:100%;max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto;gap:22px 28px;align-items:start;}
+#col-create{grid-column:1;grid-row:1;}
+.lobby-illustration{grid-column:2;grid-row:1;display:flex;justify-content:center;}
+#col-menu{grid-column:3;grid-row:1;}
+#col-players{grid-column:2;grid-row:2;}
 .lobby-col{display:flex;flex-direction:column;gap:18px;}
 .lobby-col .qr-wrap img{width:110px;height:110px;}
 .lobby-col .player-list-title{margin-bottom:4px;}
@@ -430,7 +434,10 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 #tv-host-player-list .player-item{justify-content:space-between;}
 .kick-btn{background:transparent;border:1px solid rgba(190,22,34,0.4);color:#e06a72;border-radius:8px;font-size:10px;letter-spacing:1px;padding:5px 9px;cursor:pointer;text-transform:uppercase;}
 .kick-btn:active{background:rgba(190,22,34,0.15);}
-@media (max-width:720px){.lobby-columns{grid-template-columns:1fr;gap:22px;}}
+@media (max-width:720px){
+  .lobby-columns{grid-template-columns:1fr;grid-template-rows:auto;gap:20px;}
+  #col-create,.lobby-illustration,#col-menu,#col-players{grid-column:1;grid-row:auto;}
+}
 .player-list{display:flex;flex-direction:column;gap:8px;width:100%;max-width:480px;margin:0 auto;}
 .player-list-title{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--text2);text-align:center;}
 .player-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;animation:fadeUp 0.3s cubic-bezier(0.16,1,0.3,1) both;}
@@ -616,39 +623,6 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 <div id="screen-name" class="screen active">
   <div class="logo-wrap">
     <div class="logo-text"><div class="logo-title">BAZINCO!</div><div class="logo-sub">The Dice Game</div></div>
-    <div class="logo-svg-container">
-      <svg width="260" height="191" viewBox="-10 0 300 220" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
-        <defs>
-          <linearGradient id="lG1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5c2e10"/><stop offset="45%" stop-color="#3d1e08"/><stop offset="100%" stop-color="#200e04"/></linearGradient>
-          <linearGradient id="lGInner" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0a0402"/><stop offset="100%" stop-color="#050200"/></linearGradient>
-          <linearGradient id="lGHL" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="rgba(160,80,30,0.35)"/><stop offset="100%" stop-color="rgba(0,0,0,0)"/></linearGradient>
-          <linearGradient id="dieG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#faf5e8"/><stop offset="100%" stop-color="#e8d8b8"/></linearGradient>
-          <radialGradient id="trayG" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#358048"/><stop offset="60%" stop-color="#2d6a3f"/><stop offset="100%" stop-color="#1a3d24"/></radialGradient>
-          <filter id="dS"><feDropShadow dx="2" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.6"/></filter>
-          <filter id="cS"><feDropShadow dx="3" dy="5" stdDeviation="7" flood-color="#000" flood-opacity="0.75"/></filter>
-        </defs>
-        <ellipse cx="140" cy="135" rx="105" ry="72" fill="url(#trayG)" stroke="#1a3020" stroke-width="5"/>
-        <ellipse cx="140" cy="135" rx="105" ry="72" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2"/>
-        <g filter="url(#dS)" transform="translate(88,115) rotate(-18)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="18" cy="18" r="4" fill="#1a0f05"/></g>
-        <g filter="url(#dS)" transform="translate(128,140) rotate(10)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="10" r="3.5" fill="#1a0f05"/><circle cx="10" cy="26" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/></g>
-        <g filter="url(#dS)" transform="translate(170,110) rotate(22)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/></g>
-        <g filter="url(#dS)" transform="translate(185,148) rotate(-12)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="10" r="3.5" fill="#1a0f05"/><circle cx="18" cy="18" r="3.5" fill="#1a0f05"/><circle cx="10" cy="26" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/></g>
-        <g filter="url(#dS)" transform="translate(108,152) rotate(5)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="10" r="3.5" fill="#1a0f05"/><circle cx="10" cy="26" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/><circle cx="10" cy="18" r="3.5" fill="#1a0f05"/><circle cx="26" cy="18" r="3.5" fill="#1a0f05"/></g>
-        <g filter="url(#cS)" transform="translate(215,95) rotate(108,65,55)" style="isolation:isolate">
-          <path d="M 18,8 L 6,105 Q 6,118 20,120 L 110,120 Q 124,118 124,105 L 112,8 Z" fill="url(#lG1)"/>
-          <path d="M 22,10 L 12,100 Q 12,112 22,114 L 46,114 L 52,10 Z" fill="url(#lGHL)"/>
-          <line x1="38" y1="12" x2="30" y2="114" stroke="rgba(0,0,0,0.2)" stroke-width="0.8" stroke-dasharray="5,4"/>
-          <line x1="65" y1="9" x2="65" y2="116" stroke="rgba(0,0,0,0.15)" stroke-width="0.8" stroke-dasharray="5,4"/>
-          <line x1="92" y1="12" x2="100" y2="114" stroke="rgba(0,0,0,0.2)" stroke-width="0.8" stroke-dasharray="5,4"/>
-          <g fill="rgba(140,70,20,0.45)"><circle cx="38" cy="18" r="1.5"/><circle cx="37" cy="32" r="1.5"/><circle cx="36" cy="46" r="1.5"/><circle cx="35" cy="60" r="1.5"/><circle cx="34" cy="74" r="1.5"/><circle cx="33" cy="88" r="1.5"/><circle cx="32" cy="102" r="1.5"/></g>
-          <g fill="rgba(140,70,20,0.45)"><circle cx="92" cy="18" r="1.5"/><circle cx="93" cy="32" r="1.5"/><circle cx="94" cy="46" r="1.5"/><circle cx="95" cy="60" r="1.5"/><circle cx="96" cy="74" r="1.5"/><circle cx="97" cy="88" r="1.5"/><circle cx="98" cy="102" r="1.5"/></g>
-          <path d="M 16,6 Q 65,-5 114,6 L 112,18 Q 65,7 18,18 Z" fill="#2a1005"/>
-          <path d="M 6,105 Q 6,122 20,124 L 110,124 Q 124,122 124,105 L 118,100 Q 118,116 110,118 L 20,118 Q 12,116 12,100 Z" fill="#2a1005"/>
-          <ellipse cx="65" cy="8" rx="49" ry="11" fill="url(#lGInner)"/>
-          <ellipse cx="65" cy="8" rx="49" ry="11" fill="none" stroke="rgba(80,30,10,0.4)" stroke-width="1.5"/>
-        </g>
-      </svg>
-    </div>
   </div>
   <!-- QR-SCAN ARRIVAL: shown only when landing via ?room=XXXX -->
   <div class="join-banner" id="qr-join-banner" style="display:none">
@@ -670,17 +644,53 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
         <button class="btn-primary" id="btn-tv-host-start" style="width:100%;display:none" disabled>🎲 START GAME</button>
         <button class="lobby-back" id="btn-tv-host-close" style="display:none">✕ CANCEL ROOM</button>
       </div>
-      <!-- CENTER: live player list -->
-      <div class="lobby-col" id="col-players" style="display:none">
-        <div class="player-list-title">Players at the Table</div>
-        <div id="tv-host-player-list"></div>
-        <button class="lobby-back" id="btn-clear-bans">🚫 CLEAR ALL BANS</button>
+      <!-- CENTER TOP: illustration -->
+      <div class="lobby-illustration">
+        <div class="logo-svg-container">
+          <svg width="260" height="165" viewBox="-10 55 300 190" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+            <defs>
+              <linearGradient id="lG1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5c2e10"/><stop offset="45%" stop-color="#3d1e08"/><stop offset="100%" stop-color="#200e04"/></linearGradient>
+              <linearGradient id="lGInner" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0a0402"/><stop offset="100%" stop-color="#050200"/></linearGradient>
+              <linearGradient id="lGHL" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="rgba(160,80,30,0.35)"/><stop offset="100%" stop-color="rgba(0,0,0,0)"/></linearGradient>
+              <linearGradient id="dieG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#faf5e8"/><stop offset="100%" stop-color="#e8d8b8"/></linearGradient>
+              <radialGradient id="trayG" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#358048"/><stop offset="60%" stop-color="#2d6a3f"/><stop offset="100%" stop-color="#1a3d24"/></radialGradient>
+              <filter id="dS"><feDropShadow dx="2" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.6"/></filter>
+              <filter id="cS"><feDropShadow dx="3" dy="5" stdDeviation="7" flood-color="#000" flood-opacity="0.75"/></filter>
+            </defs>
+            <ellipse cx="140" cy="135" rx="105" ry="72" fill="url(#trayG)" stroke="#1a3020" stroke-width="5"/>
+            <ellipse cx="140" cy="135" rx="105" ry="72" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2"/>
+            <g filter="url(#dS)" transform="translate(88,115) rotate(-18)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="18" cy="18" r="4" fill="#1a0f05"/></g>
+            <g filter="url(#dS)" transform="translate(128,140) rotate(10)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="10" r="3.5" fill="#1a0f05"/><circle cx="10" cy="26" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/></g>
+            <g filter="url(#dS)" transform="translate(170,110) rotate(22)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/></g>
+            <g filter="url(#dS)" transform="translate(185,148) rotate(-12)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="10" r="3.5" fill="#1a0f05"/><circle cx="18" cy="18" r="3.5" fill="#1a0f05"/><circle cx="10" cy="26" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/></g>
+            <g filter="url(#dS)" transform="translate(108,152) rotate(5)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="10" r="3.5" fill="#1a0f05"/><circle cx="10" cy="26" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/><circle cx="10" cy="18" r="3.5" fill="#1a0f05"/><circle cx="26" cy="18" r="3.5" fill="#1a0f05"/></g>
+            <g filter="url(#cS)" transform="translate(215,95) rotate(108,65,55)" style="isolation:isolate">
+              <path d="M 18,8 L 6,105 Q 6,118 20,120 L 110,120 Q 124,118 124,105 L 112,8 Z" fill="url(#lG1)"/>
+              <path d="M 22,10 L 12,100 Q 12,112 22,114 L 46,114 L 52,10 Z" fill="url(#lGHL)"/>
+              <line x1="38" y1="12" x2="30" y2="114" stroke="rgba(0,0,0,0.2)" stroke-width="0.8" stroke-dasharray="5,4"/>
+              <line x1="65" y1="9" x2="65" y2="116" stroke="rgba(0,0,0,0.15)" stroke-width="0.8" stroke-dasharray="5,4"/>
+              <line x1="92" y1="12" x2="100" y2="114" stroke="rgba(0,0,0,0.2)" stroke-width="0.8" stroke-dasharray="5,4"/>
+              <g fill="rgba(140,70,20,0.45)"><circle cx="38" cy="18" r="1.5"/><circle cx="37" cy="32" r="1.5"/><circle cx="36" cy="46" r="1.5"/><circle cx="35" cy="60" r="1.5"/><circle cx="34" cy="74" r="1.5"/><circle cx="33" cy="88" r="1.5"/><circle cx="32" cy="102" r="1.5"/></g>
+              <g fill="rgba(140,70,20,0.45)"><circle cx="92" cy="18" r="1.5"/><circle cx="93" cy="32" r="1.5"/><circle cx="94" cy="46" r="1.5"/><circle cx="95" cy="60" r="1.5"/><circle cx="96" cy="74" r="1.5"/><circle cx="97" cy="88" r="1.5"/><circle cx="98" cy="102" r="1.5"/></g>
+              <path d="M 16,6 Q 65,-5 114,6 L 112,18 Q 65,7 18,18 Z" fill="#2a1005"/>
+              <path d="M 6,105 Q 6,122 20,124 L 110,124 Q 124,122 124,105 L 118,100 Q 118,116 110,118 L 20,118 Q 12,116 12,100 Z" fill="#2a1005"/>
+              <ellipse cx="65" cy="8" rx="49" ry="11" fill="url(#lGInner)"/>
+              <ellipse cx="65" cy="8" rx="49" ry="11" fill="none" stroke="rgba(80,30,10,0.4)" stroke-width="1.5"/>
+            </g>
+          </svg>
+        </div>
       </div>
       <!-- RIGHT: menu -->
       <div class="lobby-col" id="col-menu">
         <button class="btn-primary" id="btn-how-to-play">📖 HOW TO PLAY &amp; SETUP</button>
         <button class="btn-secondary" id="btn-multiplayer-menu">👥 MULTIPLAYER</button>
         <button class="btn-secondary" id="btn-solo-open">🎲 PRACTICE SOLO</button>
+      </div>
+      <!-- CENTER BOTTOM: live player list, directly under the illustration -->
+      <div class="lobby-col" id="col-players">
+        <div class="player-list-title">Players at the Table</div>
+        <div id="tv-host-player-list"><div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div></div>
+        <button class="lobby-back" id="btn-clear-bans">🚫 CLEAR ALL BANS</button>
       </div>
     </div>
 
@@ -1272,8 +1282,7 @@ async function tvHostStart(){
   Audio.unlock();Audio.uiTick();Haptics.tick();
   document.getElementById('btn-create-room').style.display='none';
   document.getElementById('create-qr-wrap').style.display='none';
-  document.getElementById('col-players').style.display='flex';
-  document.getElementById('tv-host-player-list').innerHTML='';
+  document.getElementById('tv-host-player-list').innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;">Waiting for players…</div>';
   if(!window.CloudRoom){showToast('No connection');return;}
   const r=await window.CloudRoom.roomCreateEmpty();
   tvRoomCode=r.code;
@@ -1327,7 +1336,7 @@ async function tvHostClose(){
   document.getElementById('create-qr-wrap').style.display='none';
   document.getElementById('btn-tv-host-start').style.display='none';
   document.getElementById('btn-tv-host-close').style.display='none';
-  document.getElementById('col-players').style.display='none';
+  document.getElementById('tv-host-player-list').innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div>';
 }
 function openWaitingRoom(){
   showScreen('screen-waiting');
@@ -1421,7 +1430,7 @@ function closeJumbotron(){
     document.getElementById('create-qr-wrap').style.display='none';
     document.getElementById('btn-tv-host-start').style.display='none';
     document.getElementById('btn-tv-host-close').style.display='none';
-    document.getElementById('col-players').style.display='none';
+    document.getElementById('tv-host-player-list').innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div>';
   }
   if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
   document.getElementById('screen-jumbotron').classList.remove('active');
