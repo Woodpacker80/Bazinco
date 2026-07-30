@@ -54,8 +54,15 @@ async function roomStart(code){
   const snap=await get(ref(db,`${RP}/${code}`));if(!snap.exists())return;
   const sorted=Object.entries(snap.val().players||{}).sort((a,b)=>a[1].ts-b[1].ts).map(([p])=>p);
   const turnOrder={};sorted.forEach((pid,i)=>{turnOrder[String(i)]=pid;});
-  await update(ref(db,`${RP}/${code}`),{status:'playing',activePid:sorted[0],roundNum:1,turnOrder});
-  await set(ref(db,`${RP}/${code}/diceState`),{pid:sorted[0],dice:[0,0,0,0,0],held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()});
+  // Single atomic write — status, activePid, turnOrder, and diceState all land together,
+  // so onValue only fires once with the complete "just started" shape. Previously this was
+  // two separate writes (update() then set()), which could let listeners see an in-between
+  // state with status:'playing' but no diceState yet, especially for a TV-created room that
+  // never had a diceState field to begin with.
+  await update(ref(db,`${RP}/${code}`),{
+    status:'playing',activePid:sorted[0],roundNum:1,turnOrder,
+    diceState:{pid:sorted[0],dice:[0,0,0,0,0],held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()}
+  });
 }
 async function roomBankScore(code,pid,catScores){
   // Save this player's scores
@@ -108,10 +115,9 @@ async function roomBankScore(code,pid,catScores){
 
   // Advance turn
   const nextPid=order[(idx+1)%order.length];
-  await update(ref(db,`${RP}/${code}`),{activePid:nextPid,roundNum:nextRound});
-  await set(ref(db,`${RP}/${code}/diceState`),{
-    pid:nextPid,dice:[0,0,0,0,0],
-    held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()
+  await update(ref(db,`${RP}/${code}`),{
+    activePid:nextPid,roundNum:nextRound,
+    diceState:{pid:nextPid,dice:[0,0,0,0,0],held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()}
   });
 }
 async function roomSaveFinalScore(code,pid,finalScore,catScores){await update(ref(db,`${RP}/${code}/players/${pid}`),{finalScore,scores:catScores});}
@@ -134,10 +140,8 @@ async function roomRestart(code){
     });
     await update(ref(db,`${RP}/${code}`),{
       ...playerResets,
-      status:'playing',activePid:sorted[0],roundNum:1,turnOrder,finishedAt:null
-    });
-    await set(ref(db,`${RP}/${code}/diceState`),{
-      pid:sorted[0],dice:[0,0,0,0,0],held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()
+      status:'playing',activePid:sorted[0],roundNum:1,turnOrder,finishedAt:null,
+      diceState:{pid:sorted[0],dice:[0,0,0,0,0],held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()}
     });
   }catch(e){console.error('roomRestart error:',e);}
 }
@@ -935,6 +939,25 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 <div class="toast" id="toast"></div>
 <div class="jackpot-overlay" id="jackpot-overlay"></div>
 <script>
+// DIAGNOSTIC SAFETY NET — catches any uncaught JS error and shows it directly on
+// screen as a red banner, no dev tools needed. Left in permanently since it's
+// harmless when nothing goes wrong, and invaluable when something does.
+window.addEventListener('error', function(e){
+  try{
+    const banner=document.createElement('div');
+    banner.style.cssText='position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;font-size:13px;line-height:1.4;padding:12px;z-index:999999;white-space:pre-wrap;max-height:70vh;overflow:auto;font-family:monospace;';
+    banner.textContent='JS ERROR: '+e.message+' ('+(e.filename||'?')+':'+e.lineno+':'+e.colno+')\n'+(e.error&&e.error.stack?e.error.stack:'');
+    document.body.appendChild(banner);
+  }catch(_){}
+});
+window.addEventListener('unhandledrejection', function(e){
+  try{
+    const banner=document.createElement('div');
+    banner.style.cssText='position:fixed;top:0;left:0;right:0;background:#8e44ad;color:#fff;font-size:13px;line-height:1.4;padding:12px;z-index:999999;white-space:pre-wrap;max-height:70vh;overflow:auto;font-family:monospace;';
+    banner.textContent='UNHANDLED PROMISE REJECTION: '+(e.reason&&e.reason.stack?e.reason.stack:e.reason);
+    document.body.appendChild(banner);
+  }catch(_){}
+});
 // HAPTICS
 const Haptics=(()=>{const ok=()=>'vibrate' in navigator;return{tick:()=>ok()&&navigator.vibrate(3),hold:()=>ok()&&navigator.vibrate(12),release:()=>ok()&&navigator.vibrate(7),score:()=>ok()&&navigator.vibrate(21),roll:()=>ok()&&navigator.vibrate([8,16,11,16,8]),jackpot:()=>ok()&&navigator.vibrate([10,21,10,21,16,26,16,26,104,42,21,21,21,21,21,21]),bonus:()=>ok()&&navigator.vibrate([8,16,8,16,8,16,130,31,42,26,31,26,21,26,16,26,10])};})();
 
