@@ -1447,6 +1447,10 @@ function closeJumbotron(){
   Audio.uiTick();Haptics.tick();
   if(tvRoomCode){
     if(!confirm('Close the room and end the session for all players?'))return;
+    // Unsubscribe BEFORE cleanup — Firebase's local optimistic write from remove() can
+    // fire this same listener synchronously with room=null before the async remove()
+    // promise even resolves. Unsubscribing first means there's nothing left to catch it.
+    if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
     if(window.CloudRoom)window.CloudRoom.roomCleanup(tvRoomCode);
     tvRoomCode=null;
     document.getElementById('btn-create-room').style.display='block';
@@ -1476,6 +1480,7 @@ function jmbConnect(){
   });
 }
 function jmbOnRoomUpdate(room){
+  if(!room)return; // room was deleted (e.g. Close Room / Cancel Room) — nothing to render
   const players=room.players||{};
   const entries=Object.entries(players).sort((a,b)=>a[1].ts-b[1].ts);
   // Fix 2: safe name — use first 4 chars of pid if player.name is missing
@@ -1730,7 +1735,29 @@ function initGame(){
   clearTrayDice();const bar=document.getElementById('sticky-dice-bar');bar.innerHTML='';bar.classList.remove('visible');
   document.getElementById('mp-banner').classList.toggle('visible',!!roomCode);
   const crBtn=document.getElementById('dd-closeroom');if(crBtn)crBtn.style.display=(roomCode&&roomIsHost)?'flex':'none';
-  renderDiceRow();renderRollUI();renderSheet();showScreen('screen-game');document.getElementById('screen-game').scrollTo({top:0,behavior:'instant'});
+  renderDiceRow();renderRollUI();renderSheet();showScreen('screen-game');
+  try{document.getElementById('screen-game').scrollTo({top:0,behavior:'instant'});}catch(e){try{document.getElementById('screen-game').scrollTop=0;}catch(e2){}}
+  // TARGETED DIAGNOSTIC for the "blank body below header" bug — checks shortly after
+  // paint whether the rows genuinely exist and whether anything's making them invisible.
+  // Runs on every game start (harmless when everything's fine — banner only appears
+  // when something's actually wrong), left in until that bug is confirmed fixed.
+  setTimeout(()=>{
+    try{
+      const ur=document.getElementById('upper-rows'),lr=document.getElementById('lower-rows'),dr=document.getElementById('dice-row');
+      const sg=document.getElementById('screen-game'),dt=document.getElementById('dice-tray');
+      const bad=ur.children.length===0||lr.children.length===0||dr.children.length===0;
+      if(bad){
+        const csSg=getComputedStyle(sg),csDt=dt?getComputedStyle(dt):null;
+        const banner=document.createElement('div');
+        banner.style.cssText='position:fixed;top:0;left:0;right:0;background:#e67e22;color:#111;font-size:12px;line-height:1.5;padding:10px;z-index:999999;white-space:pre-wrap;font-family:monospace;max-height:70vh;overflow:auto;';
+        banner.textContent='DIAGNOSTIC (rows empty)\n'
+          +'upper-rows children='+ur.children.length+' lower-rows children='+lr.children.length+' dice-row children='+dr.children.length+'\n'
+          +'#screen-game active='+sg.classList.contains('active')+' display='+csSg.display+' height='+csSg.height+' bg='+csSg.backgroundColor+'\n'
+          +'#dice-tray bg='+(csDt?csDt.backgroundColor:'N/A')+' w='+(csDt?csDt.width:'N/A')+' h='+(csDt?csDt.height:'N/A');
+        document.body.appendChild(banner);
+      }
+    }catch(e){}
+  },300);
 }
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
 let _toastTimer=null;
