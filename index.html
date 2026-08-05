@@ -611,7 +611,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     <button class="btn-secondary" id="btn-tv-view">📺 TV VIEW — JUMBOTRON</button>
     <button class="btn-secondary" id="btn-start">🎲 PRACTICE SOLO</button>
   </div>
-  <div class="version-tag">v 6.16.2 Cobalt · Fair Finish Fix</div>
+  <div class="version-tag">v 6.16.3 Cobalt · Finished-Player Fix</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -1013,8 +1013,14 @@ function checkAutoBazinco(){
   else{bazPts+=100;bazCount++;Audio.bazincoBonus();Haptics.bonus();showToast('BAZINCO BONUS! ⚡ +100 pts!',2500);}
   triggerJackpotFlash();renderSheet();
   const done=[...UPPER,...LOWER].filter(c=>!c.isBaz).every(c=>scores[c.id]!==undefined);
-  setTimeout(()=>{dice=[0,0,0,0,0];held=[false,false,false,false,false];rollsLeft=3;hasRolled=false;animating=false;clearTrayDice();renderDiceRow();renderRollUI();renderSheet();
-    if(done){setTimeout(showEnd,400);return;}document.getElementById('screen-game').scrollTo({top:0,behavior:'smooth'});},1800);
+  setTimeout(()=>{
+    dice=[0,0,0,0,0];held=[false,false,false,false,false];rollsLeft=3;hasRolled=false;animating=false;clearTrayDice();renderDiceRow();renderRollUI();renderSheet();
+    // Sync the bonus-roll reset — this used to only change local state, so the TV and
+    // the other player's screen never saw it and kept showing the stale 5-of-a-kind
+    // dice / old rolls-left until this player's next real roll.
+    if(roomCode&&roomPlayerId&&window.CloudRoom)window.CloudRoom.roomBroadcastDice(roomCode,roomPlayerId,[...dice],[...held],rollsLeft);
+    if(done){setTimeout(showEnd,400);return;}document.getElementById('screen-game').scrollTo({top:0,behavior:'smooth'});
+  },1800);
 }
 function triggerJackpotFlash(){
   const se=document.getElementById('hdr-score');se.classList.remove('jackpot-glow');void se.offsetWidth;se.classList.add('jackpot-glow');setTimeout(()=>se.classList.remove('jackpot-glow'),1100);
@@ -1133,7 +1139,7 @@ function openScoreboard(hi=null){document.getElementById('screen-scoreboard').cl
 function closeScoreboard(){document.getElementById('screen-scoreboard').classList.remove('active');if(_sbUnsub){_sbUnsub();_sbUnsub=null;}}
 
 // MULTIPLAYER
-let roomCode=null,roomPlayerId=null,roomIsHost=false,roomActivePid=null,roomUnsub=null;
+let roomCode=null,roomPlayerId=null,roomIsHost=false,roomActivePid=null,roomUnsub=null,roomPrevStatus=null;
 function openLobby(){const name=document.getElementById('inp-name').value.trim();if(!name){showToast('Enter your name first!');return;}Audio.uiTick();Haptics.tick();playerName=name;localStorage.setItem('bazinco_name',name);showScreen('screen-lobby');}
 async function doHost(){if(!window.CloudRoom){showToast('No connection');return;}const btn=document.getElementById('btn-host');btn.textContent='Creating…';btn.disabled=true;const r=await window.CloudRoom.roomCreate(playerName);btn.textContent='CREATE ROOM';btn.disabled=false;if(r.error){showToast(r.error,2800);return;}roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=true;openWaitingRoom();}
 async function doJoin(){if(!window.CloudRoom){showToast('No connection');return;}const code=document.getElementById('inp-room-code').value.trim();if(code.length!==4){showToast('Enter a 4-digit code');return;}const btn=document.getElementById('btn-join');btn.textContent='Joining…';btn.disabled=true;const r=await window.CloudRoom.roomJoin(code,playerName);btn.textContent='JOIN ROOM';btn.disabled=false;if(r.error){showToast(r.error,2800);return;}roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;openWaitingRoom();}
@@ -1173,6 +1179,7 @@ function onRoomUpdate(room){
       Audio.victoryFanfare();
       triggerPhoneVictory();
     },2500);
+    roomPrevStatus=room.status;
     return;
   }
   const players=room.players||{};
@@ -1203,17 +1210,25 @@ function onRoomUpdate(room){
     else if(room.activePid&&room.activePid!==roomPlayerId){showToast(activeName+' is rolling…',1800);}
     renderRollUI();
   }
-  if(room.status==='playing'&&document.getElementById('screen-waiting')?.classList.contains('active')){initGame();return;}
-  // Auto-pull: host restarted — pull everyone from end screen into new game
-  if(room.status==='playing'&&document.getElementById('screen-end')?.classList.contains('active')){
+  if(room.status==='playing'&&document.getElementById('screen-waiting')?.classList.contains('active')){roomPrevStatus=room.status;initGame();return;}
+  // Auto-pull: host restarted — pull everyone from end screen into new game.
+  // Gated on roomPrevStatus==='done' so this only fires on a genuine done→playing
+  // transition (an actual restart). Without that check, this used to also fire for a
+  // player who simply finished early and is sitting on screen-end while status is
+  // STILL legitimately 'playing' because other players haven't finished their own
+  // turns yet — silently wiping that finished player's local scores/turn count back
+  // to a fresh game, which then got pushed to Firebase on their next action,
+  // corrupting their already-correct saved results.
+  if(roomPrevStatus==='done'&&room.status==='playing'&&document.getElementById('screen-end')?.classList.contains('active')){
     // Reset btn-again for next game end
     const ab=document.getElementById('btn-again');if(ab){ab.textContent='PLAY AGAIN';ab.disabled=false;ab.style.opacity='';}
-    initGame();return;
+    roomPrevStatus=room.status;initGame();return;
   }
+  roomPrevStatus=room.status;
 }
 async function doStartGame(){if(!window.CloudRoom)return;Audio.uiTick();Haptics.tick();await window.CloudRoom.roomStart(roomCode);}
 async function leaveRoom(){Audio.uiTick();Haptics.tick();if(roomUnsub){roomUnsub();roomUnsub=null;}if(roomCode&&roomIsHost&&window.CloudRoom)await window.CloudRoom.roomCleanup(roomCode);resetRoomState();showScreen('screen-name');}
-function resetRoomState(){roomCode=null;roomPlayerId=null;roomIsHost=false;roomActivePid=null;}
+function resetRoomState(){roomCode=null;roomPlayerId=null;roomIsHost=false;roomActivePid=null;roomPrevStatus=null;}
 
 // JUMBOTRON
 let jmbUnsub=null,jmbPrevStatus=null,jmbPrevRollTs=null,jmbPrevBazScore=0,jmbPrevActivePid=null;
