@@ -56,41 +56,30 @@ async function roomBankScore(code,pid,catScores){
                'threeKind','fourKind','fullHouse','smStraight','lgStraight','chance'];
 
   const players=room.players||{};
+  const catsFor=p=>(p===pid)?((catScores&&typeof catScores==='object')?catScores:{})
+    :((players[p]&&players[p].scores&&typeof players[p].scores==='object')?players[p].scores:{});
+  const isPlayerDone=p=>ALL12.every(id=>catsFor(p)[id]!==undefined);
 
-  // isGameDone: every player has all 12 clickable categories filled.
-  // For the current player we use catScores directly (avoids read-after-write race).
-  const isGameDone=order.every(p=>{
-    let cs;
-    if(p===pid){
-      cs=(catScores&&typeof catScores==='object')?catScores:{};
-    } else {
-      cs=(players[p]&&players[p].scores&&typeof players[p].scores==='object')
-         ?players[p].scores:{};
-    }
-    return ALL12.every(id=>cs[id]!==undefined);
-  });
-
-  if(isGameDone){
-    await update(ref(db,`${RP}/${code}`),{
-      status:'done',activePid:null,finishedAt:Date.now()
-    });
+  // isGameDone: every player has all 12 clickable categories filled. This is the ONLY
+  // thing allowed to end the game — a round counter can drift out of sync with actual
+  // saved data (e.g. one player's last save landing slightly later than expected), and
+  // previously a "round > 12" fallback would force status:'done' even when this check
+  // said someone genuinely wasn't finished yet, silently freezing that player out with
+  // whatever they'd saved so far. Correctness now comes from real data, not a tally.
+  if(order.every(isPlayerDone)){
+    await update(ref(db,`${RP}/${code}`),{status:'done',activePid:null,finishedAt:Date.now()});
     return;
   }
 
-  // Round counter guard — 12 rounds max (Bazinco doesn't count as a turn)
+  // Advance turn — skip anyone who has already finished all 12 categories, so a
+  // finished player never gets prompted to roll again with nothing left to pick, and
+  // whoever's still playing keeps getting their turns even if they're running behind.
   const idx=order.indexOf(pid);
-  const currentRound=room.roundNum||1;
+  let nextIdx=(idx+1)%order.length,hops=0,nextPid=order[nextIdx];
+  while(isPlayerDone(nextPid)&&hops<order.length){nextIdx=(nextIdx+1)%order.length;nextPid=order[nextIdx];hops++;}
   const isLastInRound=(idx===order.length-1);
-  const nextRound=isLastInRound?currentRound+1:currentRound;
-  if(nextRound>12){
-    await update(ref(db,`${RP}/${code}`),{
-      status:'done',activePid:null,finishedAt:Date.now()
-    });
-    return;
-  }
-
-  // Advance turn
-  const nextPid=order[(idx+1)%order.length];
+  const currentRound=room.roundNum||1;
+  const nextRound=Math.min(isLastInRound?currentRound+1:currentRound,12); // display only, never ends the game
   await update(ref(db,`${RP}/${code}`),{activePid:nextPid,roundNum:nextRound});
   await set(ref(db,`${RP}/${code}/diceState`),{
     pid:nextPid,dice:[0,0,0,0,0],
@@ -622,7 +611,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     <button class="btn-secondary" id="btn-tv-view">📺 TV VIEW — JUMBOTRON</button>
     <button class="btn-secondary" id="btn-start">🎲 PRACTICE SOLO</button>
   </div>
-  <div class="version-tag">v 6.16.1 Cobalt · Score Save Fix</div>
+  <div class="version-tag">v 6.16.2 Cobalt · Fair Finish Fix</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
