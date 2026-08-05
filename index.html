@@ -622,7 +622,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     <button class="btn-secondary" id="btn-tv-view">📺 TV VIEW — JUMBOTRON</button>
     <button class="btn-secondary" id="btn-start">🎲 PRACTICE SOLO</button>
   </div>
-  <div class="version-tag">v 6.16 Cobalt · Cloud Edition</div>
+  <div class="version-tag">v 6.16.1 Cobalt · Score Save Fix</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -847,6 +847,24 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 <div class="toast" id="toast"></div>
 <div class="jackpot-overlay" id="jackpot-overlay"></div>
 <script>
+// DIAGNOSTIC SAFETY NET — catches any uncaught JS error and shows it directly on
+// screen as a red banner, no dev tools needed. Harmless when nothing goes wrong.
+window.addEventListener('error', function(e){
+  try{
+    const banner=document.createElement('div');
+    banner.style.cssText='position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;font-size:13px;line-height:1.4;padding:12px;z-index:999999;white-space:pre-wrap;max-height:70vh;overflow:auto;font-family:monospace;';
+    banner.textContent='JS ERROR: '+e.message+' ('+(e.filename||'?')+':'+e.lineno+':'+e.colno+')\n'+(e.error&&e.error.stack?e.error.stack:'');
+    document.body.appendChild(banner);
+  }catch(_){}
+});
+window.addEventListener('unhandledrejection', function(e){
+  try{
+    const banner=document.createElement('div');
+    banner.style.cssText='position:fixed;top:0;left:0;right:0;background:#8e44ad;color:#fff;font-size:13px;line-height:1.4;padding:12px;z-index:999999;white-space:pre-wrap;max-height:70vh;overflow:auto;font-family:monospace;';
+    banner.textContent='UNHANDLED PROMISE REJECTION: '+(e.reason&&e.reason.stack?e.reason.stack:e.reason);
+    document.body.appendChild(banner);
+  }catch(_){}
+});
 // HAPTICS
 const Haptics=(()=>{const ok=()=>'vibrate' in navigator;return{tick:()=>ok()&&navigator.vibrate(3),hold:()=>ok()&&navigator.vibrate(12),release:()=>ok()&&navigator.vibrate(7),score:()=>ok()&&navigator.vibrate(21),roll:()=>ok()&&navigator.vibrate([8,16,11,16,8]),jackpot:()=>ok()&&navigator.vibrate([10,21,10,21,16,26,16,26,104,42,21,21,21,21,21,21]),bonus:()=>ok()&&navigator.vibrate([8,16,8,16,8,16,130,31,42,26,31,26,21,26,16,26,10])};})();
 
@@ -1024,11 +1042,12 @@ function selectCat(id){
   dice=[0,0,0,0,0];held=[false,false,false,false,false];rollsLeft=3;hasRolled=false;
   clearTrayDice();renderDiceRow();renderRollUI();renderSheet();
   const done=[...UPPER,...LOWER].filter(c=>!c.isBaz).every(c=>scores[c.id]!==undefined);
+  // Always bank immediately — including on the final category. This used to only run
+  // in the "not done yet" branch, meaning a player's own last pick was never saved here
+  // at all, relying entirely on showEnd()'s delayed (400ms+800ms) fallback save instead.
+  if(roomCode&&roomPlayerId&&window.CloudRoom)window.CloudRoom.roomBankScore(roomCode,roomPlayerId,{...scores,bazinco_pts:bazPts});
   if(done){setTimeout(showEnd,400);}
-  else{
-    if(roomCode&&roomPlayerId&&window.CloudRoom)window.CloudRoom.roomBankScore(roomCode,roomPlayerId,{...scores,bazinco_pts:bazPts});
-    document.getElementById('screen-game').scrollTo({top:0,behavior:'smooth'});
-  }
+  else{document.getElementById('screen-game').scrollTo({top:0,behavior:'smooth'});}
 }
 
 // showEnd(ranked) — ranked is optional array [{name, score, isMe}] from onRoomUpdate
