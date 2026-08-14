@@ -405,21 +405,21 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 #screen-jumbotron{
   display:none;position:fixed;inset:0;z-index:200;background:#040c1a;
   grid-template-rows:56px 1fr 48px;
-  grid-template-columns:260px 1fr 340px;
+  grid-template-columns:228px 1fr 300px;
   grid-template-areas:"jh jh jh" "jl jc jr" "jf jf jf";
   overflow:hidden;font-family:'Nunito',sans-serif;
 }
 #screen-jumbotron.active{display:grid;}
 
 /* Header — Room code LEFT | BAZINCO! CENTRE | Exit RIGHT
-   Left cell width = 260px (matches .jl column exactly)
-   Right cell width = 340px (matches .jr column exactly)
+   Left cell width = 228px (matches .jl column exactly)
+   Right cell width = 300px (matches .jr column exactly)
    Centre = 1fr = remaining space with logo truly centred within it */
 .jh{
   grid-area:jh;background:#020810;
   border-bottom:2px solid var(--gold);
   display:grid;
-  grid-template-columns:260px 1fr 340px;
+  grid-template-columns:228px 1fr 300px;
   align-items:stretch;
   padding:0;
   box-shadow:0 2px 20px rgba(201,151,42,0.15);
@@ -487,10 +487,10 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
   grid-area:jc;
   background:radial-gradient(ellipse at 50% 35%,#0e2244 0%,#040c1a 70%);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:24px;padding:20px;position:relative;overflow:hidden;
+  gap:24px;padding:10px;position:relative;overflow:hidden;
 }
 .jc::before{content:'';position:absolute;inset:0;background-image:repeating-linear-gradient(135deg,transparent,transparent 4px,rgba(255,255,255,0.01) 4px,rgba(255,255,255,0.01) 8px);pointer-events:none;}
-.jc-state{display:none;flex-direction:column;align-items:center;gap:18px;z-index:1;width:100%;}
+.jc-state{display:none;flex-direction:column;align-items:center;gap:12px;z-index:1;width:100%;}
 .jc-state.vis{display:flex;}
 #jmb-st-done.vis{justify-content:flex-start;margin-top:30px;margin-bottom:auto;}
 .jc-entry-title{font-family:'Cinzel',serif;font-size:20px;font-weight:900;color:var(--gold2);letter-spacing:3px;}
@@ -501,8 +501,8 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .jc-now-label{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);}
 .jc-active-name{font-family:'Cinzel',serif;font-size:34px;font-weight:900;letter-spacing:3px;background:linear-gradient(160deg,var(--gold3),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-top:2px;}
 .jc-active-meta{font-size:12px;color:var(--text2);margin-top:3px;letter-spacing:2px;}
-.jc-arena{display:flex;flex-direction:column;align-items:center;gap:16px;}
-.jc-felt-tray{width:220px;height:220px;border-radius:50%;background:radial-gradient(ellipse at 35% 30%,var(--felt-light) 0%,var(--felt) 40%,var(--felt2) 70%,var(--felt3) 100%);box-shadow:0 0 0 6px var(--tray-rim),0 0 0 8px rgba(255,255,255,0.06),0 14px 50px rgba(0,0,0,0.7),inset 0 2px 8px rgba(255,255,255,0.06),inset 0 -4px 12px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;}
+.jc-arena{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.jc-felt-tray{width:244px;height:244px;border-radius:50%;background:radial-gradient(ellipse at 35% 30%,var(--felt-light) 0%,var(--felt) 40%,var(--felt2) 70%,var(--felt3) 100%);box-shadow:0 0 0 6px var(--tray-rim),0 0 0 8px rgba(255,255,255,0.06),0 14px 50px rgba(0,0,0,0.7),inset 0 2px 8px rgba(255,255,255,0.06),inset 0 -4px 12px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;}
 .jc-dice-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
 .jc-die{width:60px;height:60px;background:linear-gradient(145deg,#faf4e8,#ede0c4);border-radius:11px;display:grid;place-items:center;box-shadow:0 4px 16px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.8),inset 0 -2px 4px rgba(0,0,0,0.1);transition:transform 0.2s,box-shadow 0.2s;}
 .jc-die.jc-held{background:linear-gradient(145deg,#d4f0b0,#b8e090);box-shadow:0 0 0 3px var(--held-bdr),0 0 16px rgba(74,191,104,0.4),0 4px 12px rgba(74,191,104,0.2),inset 0 1px 0 rgba(255,255,255,0.7);transform:scale(1.08);}
@@ -611,7 +611,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     <button class="btn-secondary" id="btn-tv-view">📺 TV VIEW — JUMBOTRON</button>
     <button class="btn-secondary" id="btn-start">🎲 PRACTICE SOLO</button>
   </div>
-  <div class="version-tag">v 6.17.1 Cobalt · Tighter Illustration</div>
+  <div class="version-tag">v 6.17.2 Cobalt · Jumbotron Rebalance</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
