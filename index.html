@@ -409,20 +409,20 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .lobby-name-input{width:100%;box-sizing:border-box;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;padding:12px 16px;outline:none;text-align:center;transition:border-color 0.2s,box-shadow 0.2s;}
 .lobby-name-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,151,42,0.12);}
 .lobby-columns{width:100%;max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px 28px;align-items:start;}
-#col-create{grid-column:1;}
+#col-players{grid-column:1;}
 .lobby-illustration{grid-column:2;display:flex;flex-direction:column;gap:18px;}
 .lobby-illustration .logo-svg-container{align-self:center;}
 #col-menu{grid-column:3;}
 .lobby-col{display:flex;flex-direction:column;gap:18px;}
 .lobby-col .qr-wrap img{width:110px;height:110px;}
-.lobby-illustration .player-list-title{margin-bottom:4px;}
+.player-list-title{margin-bottom:4px;}
 #tv-host-player-list{display:flex;flex-direction:column;gap:10px;}
 #tv-host-player-list .player-item{justify-content:space-between;}
 .kick-btn{background:transparent;border:1px solid rgba(190,22,34,0.4);color:#e06a72;border-radius:8px;font-size:10px;letter-spacing:1px;padding:5px 9px;cursor:pointer;text-transform:uppercase;}
 .kick-btn:active{background:rgba(190,22,34,0.15);}
 @media (max-width:720px){
   .lobby-columns{grid-template-columns:1fr;gap:20px;}
-  #col-create,.lobby-illustration,#col-menu{grid-column:1;}
+  #col-players,.lobby-illustration,#col-menu{grid-column:1;}
 }
 .player-list{display:flex;flex-direction:column;gap:8px;width:100%;max-width:480px;margin:0 auto;}
 .player-list-title{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--text2);text-align:center;}
@@ -621,17 +621,14 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
   <!-- DYNAMIC LOBBY ZONE: 3-column tablet/TV layout, or the solo name panel -->
   <div class="name-form" id="lobby-zone">
     <div class="lobby-columns" id="lobby-columns">
-      <!-- LEFT: room creation -->
-      <div class="lobby-col" id="col-create">
-        <button class="btn-primary" id="btn-create-room" style="width:100%">🆕 CREATE ROOM</button>
-        <div class="qr-wrap" id="create-qr-wrap" style="display:none">
-          <img id="create-qr-img" alt="QR code to join this room">
-        </div>
-        <button class="btn-primary" id="btn-tv-host-start" style="width:100%;display:none" disabled>🎲 START GAME</button>
-        <button class="lobby-back" id="btn-tv-host-close" style="display:none">✕ CANCEL ROOM</button>
+      <!-- LEFT: live player list — full column height, room to grow -->
+      <div class="lobby-col" id="col-players">
+        <div class="player-list-title">Players at the Table</div>
+        <div id="tv-host-player-list"><div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div></div>
+        <button class="lobby-back" id="btn-clear-bans">🚫 CLEAR ALL BANS</button>
       </div>
-      <!-- CENTER: illustration + player list, one continuous stack -->
-      <div class="lobby-illustration" id="col-players">
+      <!-- CENTER: illustration + room creation, one continuous stack -->
+      <div class="lobby-illustration" id="col-create">
         <div class="logo-svg-container" style="transform:translateX(-53px)">
           <svg width="260" height="165" viewBox="-10 55 300 190" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
             <defs>
@@ -665,9 +662,12 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
             </g>
           </svg>
         </div>
-        <div class="player-list-title">Players at the Table</div>
-        <div id="tv-host-player-list"><div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div></div>
-        <button class="lobby-back" id="btn-clear-bans">🚫 CLEAR ALL BANS</button>
+        <button class="btn-primary" id="btn-create-room" style="width:100%">🆕 CREATE ROOM</button>
+        <div class="qr-wrap" id="create-qr-wrap" style="display:none">
+          <img id="create-qr-img" alt="QR code to join this room">
+        </div>
+        <button class="btn-primary" id="btn-tv-host-start" style="width:100%;display:none" disabled>🎲 START GAME</button>
+        <button class="lobby-back" id="btn-tv-host-close" style="display:none">✕ CANCEL ROOM</button>
       </div>
       <!-- RIGHT: menu -->
       <div class="lobby-col" id="col-menu">
@@ -685,7 +685,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.20.1 Cobalt · Aligned Stack</div>
+  <div class="version-tag">v 6.20.2 Cobalt · Swapped Columns</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
