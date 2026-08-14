@@ -16,29 +16,48 @@ const SP="bazinco/scores",RP="bazinco/rooms";
 async function cloudAddScore(name,score){const date=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});try{await push(ref(db,SP),{name,score,date,ts:Date.now()});}catch(e){}}
 function cloudWatchScores(cb){return onValue(ref(db,SP),snap=>{if(!snap.exists()){cb([]);return;}const a=[];snap.forEach(c=>{const v=c.val();if(v&&typeof v.score==="number")a.push(v);});a.sort((x,y)=>y.score-x.score);cb(a.slice(0,10));},(err)=>{console.error("FIREBASE READ ERROR:",err);cb(null);});}
 function mkCode(){const ch='0123456789';return Array.from({length:4},()=>ch[Math.floor(Math.random()*ch.length)]).join('');}
-async function roomCreate(name){
+async function roomCreate(name,deviceId){
   let code,snap;
   do{code=mkCode();snap=await get(ref(db,`${RP}/${code}`));}while(snap.exists());
   const pid=push(ref(db,`${RP}/${code}/players`)).key;
-  await set(ref(db,`${RP}/${code}`),{host:pid,status:'waiting',activePid:null,roundNum:1,turnOrder:{},createdAt:Date.now(),players:{[pid]:{name,finalScore:null,scores:{},ts:Date.now()}}});
+  await set(ref(db,`${RP}/${code}`),{host:pid,status:'waiting',activePid:null,roundNum:1,turnOrder:{},createdAt:Date.now(),players:{[pid]:{name,finalScore:null,scores:{},ts:Date.now(),deviceId:deviceId||null}}});
   return{code,playerId:pid};
 }
-async function roomJoin(code,name){
+async function roomCreateEmpty(){
+  let code,snap;
+  do{code=mkCode();snap=await get(ref(db,`${RP}/${code}`));}while(snap.exists());
+  await set(ref(db,`${RP}/${code}`),{host:null,status:'waiting',activePid:null,roundNum:1,turnOrder:{},createdAt:Date.now(),players:{}});
+  return{code};
+}
+async function roomJoin(code,name,deviceId){
   const snap=await get(ref(db,`${RP}/${code}`));
   if(!snap.exists())return{error:'Room not found.'};
-  if(snap.val().status!=='waiting')return{error:'Game already started.'};
-  if(Object.keys(snap.val().players||{}).length>=8)return{error:'Room full (max 8).'};
+  const room=snap.val();
+  if(room.status!=='waiting')return{error:'Game already started.'};
+  if(deviceId&&room.bans&&room.bans[deviceId])return{error:'You have been removed from this room.'};
+  if(Object.keys(room.players||{}).length>=8)return{error:'Room full (max 8).'};
   const pid=push(ref(db,`${RP}/${code}/players`)).key;
-  await set(ref(db,`${RP}/${code}/players/${pid}`),{name,finalScore:null,scores:{},ts:Date.now()});
+  await set(ref(db,`${RP}/${code}/players/${pid}`),{name,finalScore:null,scores:{},ts:Date.now(),deviceId:deviceId||null});
   // onDisconnect remove intentionally omitted — preserves player node if mobile screen sleeps
   return{code,playerId:pid};
 }
+async function roomKick(code,pid){
+  try{
+    const snap=await get(ref(db,`${RP}/${code}/players/${pid}`));
+    const deviceId=snap.exists()?snap.val().deviceId:null;
+    await remove(ref(db,`${RP}/${code}/players/${pid}`));
+    if(deviceId)await set(ref(db,`${RP}/${code}/bans/${deviceId}`),true);
+  }catch(e){}
+}
+async function roomClearBans(code){try{await remove(ref(db,`${RP}/${code}/bans`));}catch(e){}}
 async function roomStart(code){
   const snap=await get(ref(db,`${RP}/${code}`));if(!snap.exists())return;
   const sorted=Object.entries(snap.val().players||{}).sort((a,b)=>a[1].ts-b[1].ts).map(([p])=>p);
   const turnOrder={};sorted.forEach((pid,i)=>{turnOrder[String(i)]=pid;});
-  await update(ref(db,`${RP}/${code}`),{status:'playing',activePid:sorted[0],roundNum:1,turnOrder});
-  await set(ref(db,`${RP}/${code}/diceState`),{pid:sorted[0],dice:[0,0,0,0,0],held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()});
+  await update(ref(db,`${RP}/${code}`),{
+    status:'playing',activePid:sorted[0],roundNum:1,turnOrder,
+    diceState:{pid:sorted[0],dice:[0,0,0,0,0],held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()}
+  });
 }
 async function roomBankScore(code,pid,catScores){
   // Save this player's scores
@@ -80,10 +99,9 @@ async function roomBankScore(code,pid,catScores){
   const isLastInRound=(idx===order.length-1);
   const currentRound=room.roundNum||1;
   const nextRound=Math.min(isLastInRound?currentRound+1:currentRound,12); // display only, never ends the game
-  await update(ref(db,`${RP}/${code}`),{activePid:nextPid,roundNum:nextRound});
-  await set(ref(db,`${RP}/${code}/diceState`),{
-    pid:nextPid,dice:[0,0,0,0,0],
-    held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()
+  await update(ref(db,`${RP}/${code}`),{
+    activePid:nextPid,roundNum:nextRound,
+    diceState:{pid:nextPid,dice:[0,0,0,0,0],held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()}
   });
 }
 async function roomSaveFinalScore(code,pid,finalScore,catScores){await update(ref(db,`${RP}/${code}/players/${pid}`),{finalScore,scores:catScores});}
@@ -106,10 +124,8 @@ async function roomRestart(code){
     });
     await update(ref(db,`${RP}/${code}`),{
       ...playerResets,
-      status:'playing',activePid:sorted[0],roundNum:1,turnOrder,finishedAt:null
-    });
-    await set(ref(db,`${RP}/${code}/diceState`),{
-      pid:sorted[0],dice:[0,0,0,0,0],held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()
+      status:'playing',activePid:sorted[0],roundNum:1,turnOrder,finishedAt:null,
+      diceState:{pid:sorted[0],dice:[0,0,0,0,0],held:[false,false,false,false,false],rollsLeft:3,ts:Date.now()}
     });
   }catch(e){console.error('roomRestart error:',e);}
 }
@@ -124,7 +140,7 @@ function roomListen(code,cb){
   });
 }
 window.CloudScores={cloudAddScore,cloudWatchScores};
-window.CloudRoom={roomCreate,roomJoin,roomStart,roomBankScore,roomSaveFinalScore,roomBroadcastDice,roomCleanup,roomListen,roomLeave,roomRestart};
+window.CloudRoom={roomCreate,roomCreateEmpty,roomJoin,roomKick,roomClearBans,roomStart,roomBankScore,roomSaveFinalScore,roomBroadcastDice,roomCleanup,roomListen,roomLeave,roomRestart};
 </script>
 <style>
 :root{--felt:#2d6a3f;--felt2:#245532;--felt3:#1a3d24;--felt-light:#358048;--tray-rim:#1a3020;--bg:#0F2A55;--surface:#173B75;--surface2:#1E4B8F;--border:#2D65BA;--header-bg:#0A1C3A;--gold:#c9972a;--gold2:#e8bc55;--gold3:#f5d878;--text:#ffffff;--text2:#a8c8ff;--muted:#6899dd;--held-bdr:#4abf68;--radius:13px;--shadow:0 8px 32px rgba(0,0,0,0.6);}
@@ -384,6 +400,30 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .code-input-wrap{display:flex;justify-content:center;}
 .code-input-wrap input{width:90%;max-width:260px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'Cinzel',serif;font-size:28px;font-weight:700;padding:14px 16px;outline:none;text-transform:uppercase;letter-spacing:8px;text-align:center;transition:border-color 0.2s,box-shadow 0.2s;}
 .code-input-wrap input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,151,42,0.12);}
+.qr-wrap{margin-top:14px;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.qr-wrap img{width:130px;height:130px;border-radius:10px;background:#fff;padding:6px;box-shadow:0 4px 16px rgba(0,0,0,0.3);}
+.qr-wrap .qr-cap{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.join-banner{width:100%;max-width:480px;margin:0 auto 4px;background:rgba(201,151,42,0.1);border:1.5px solid var(--gold);border-radius:12px;padding:12px 16px;text-align:center;}
+.join-banner .jb-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.join-banner .jb-code{font-family:'Cinzel',serif;font-size:22px;font-weight:900;color:var(--gold2);letter-spacing:4px;}
+.lobby-name-input{width:100%;box-sizing:border-box;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;padding:12px 16px;outline:none;text-align:center;transition:border-color 0.2s,box-shadow 0.2s;}
+.lobby-name-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,151,42,0.12);}
+.lobby-columns{width:100%;max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto;gap:22px 28px;align-items:start;}
+#col-create{grid-column:1;grid-row:1;}
+.lobby-illustration{grid-column:2;grid-row:1;display:flex;justify-content:center;}
+#col-menu{grid-column:3;grid-row:1;}
+#col-players{grid-column:2;grid-row:2;}
+.lobby-col{display:flex;flex-direction:column;gap:18px;}
+.lobby-col .qr-wrap img{width:110px;height:110px;}
+.lobby-col .player-list-title{margin-bottom:4px;}
+#tv-host-player-list{display:flex;flex-direction:column;gap:10px;}
+#tv-host-player-list .player-item{justify-content:space-between;}
+.kick-btn{background:transparent;border:1px solid rgba(190,22,34,0.4);color:#e06a72;border-radius:8px;font-size:10px;letter-spacing:1px;padding:5px 9px;cursor:pointer;text-transform:uppercase;}
+.kick-btn:active{background:rgba(190,22,34,0.15);}
+@media (max-width:720px){
+  .lobby-columns{grid-template-columns:1fr;grid-template-rows:auto;gap:20px;}
+  #col-create,.lobby-illustration,#col-menu,#col-players{grid-column:1;grid-row:auto;}
+}
 .player-list{display:flex;flex-direction:column;gap:8px;width:100%;max-width:480px;margin:0 auto;}
 .player-list-title{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--text2);text-align:center;}
 .player-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;animation:fadeUp 0.3s cubic-bezier(0.16,1,0.3,1) both;}
@@ -569,49 +609,86 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 <div id="screen-name" class="screen active">
   <div class="logo-wrap">
     <div class="logo-text"><div class="logo-title">BAZINCO!</div><div class="logo-sub">The Dice Game</div></div>
-    <div class="logo-svg-container">
-      <svg width="300" height="190" viewBox="-10 55 300 190" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
-        <defs>
-          <linearGradient id="lG1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5c2e10"/><stop offset="45%" stop-color="#3d1e08"/><stop offset="100%" stop-color="#200e04"/></linearGradient>
-          <linearGradient id="lGInner" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0a0402"/><stop offset="100%" stop-color="#050200"/></linearGradient>
-          <linearGradient id="lGHL" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="rgba(160,80,30,0.35)"/><stop offset="100%" stop-color="rgba(0,0,0,0)"/></linearGradient>
-          <linearGradient id="dieG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#faf5e8"/><stop offset="100%" stop-color="#e8d8b8"/></linearGradient>
-          <radialGradient id="trayG" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#358048"/><stop offset="60%" stop-color="#2d6a3f"/><stop offset="100%" stop-color="#1a3d24"/></radialGradient>
-          <filter id="dS"><feDropShadow dx="2" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.6"/></filter>
-          <filter id="cS"><feDropShadow dx="3" dy="5" stdDeviation="7" flood-color="#000" flood-opacity="0.75"/></filter>
-        </defs>
-        <ellipse cx="140" cy="135" rx="105" ry="72" fill="url(#trayG)" stroke="#1a3020" stroke-width="5"/>
-        <ellipse cx="140" cy="135" rx="105" ry="72" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2"/>
-        <g filter="url(#dS)" transform="translate(88,115) rotate(-18)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="18" cy="18" r="4" fill="#1a0f05"/></g>
-        <g filter="url(#dS)" transform="translate(128,140) rotate(10)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="10" r="3.5" fill="#1a0f05"/><circle cx="10" cy="26" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/></g>
-        <g filter="url(#dS)" transform="translate(170,110) rotate(22)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/></g>
-        <g filter="url(#dS)" transform="translate(185,148) rotate(-12)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="10" r="3.5" fill="#1a0f05"/><circle cx="18" cy="18" r="3.5" fill="#1a0f05"/><circle cx="10" cy="26" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/></g>
-        <g filter="url(#dS)" transform="translate(108,152) rotate(5)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="10" r="3.5" fill="#1a0f05"/><circle cx="10" cy="26" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/><circle cx="10" cy="18" r="3.5" fill="#1a0f05"/><circle cx="26" cy="18" r="3.5" fill="#1a0f05"/></g>
-        <g filter="url(#cS)" transform="translate(215,95) rotate(108,65,55)" style="isolation:isolate">
-          <path d="M 18,8 L 6,105 Q 6,118 20,120 L 110,120 Q 124,118 124,105 L 112,8 Z" fill="url(#lG1)"/>
-          <path d="M 22,10 L 12,100 Q 12,112 22,114 L 46,114 L 52,10 Z" fill="url(#lGHL)"/>
-          <line x1="38" y1="12" x2="30" y2="114" stroke="rgba(0,0,0,0.2)" stroke-width="0.8" stroke-dasharray="5,4"/>
-          <line x1="65" y1="9" x2="65" y2="116" stroke="rgba(0,0,0,0.15)" stroke-width="0.8" stroke-dasharray="5,4"/>
-          <line x1="92" y1="12" x2="100" y2="114" stroke="rgba(0,0,0,0.2)" stroke-width="0.8" stroke-dasharray="5,4"/>
-          <g fill="rgba(140,70,20,0.45)"><circle cx="38" cy="18" r="1.5"/><circle cx="37" cy="32" r="1.5"/><circle cx="36" cy="46" r="1.5"/><circle cx="35" cy="60" r="1.5"/><circle cx="34" cy="74" r="1.5"/><circle cx="33" cy="88" r="1.5"/><circle cx="32" cy="102" r="1.5"/></g>
-          <g fill="rgba(140,70,20,0.45)"><circle cx="92" cy="18" r="1.5"/><circle cx="93" cy="32" r="1.5"/><circle cx="94" cy="46" r="1.5"/><circle cx="95" cy="60" r="1.5"/><circle cx="96" cy="74" r="1.5"/><circle cx="97" cy="88" r="1.5"/><circle cx="98" cy="102" r="1.5"/></g>
-          <path d="M 16,6 Q 65,-5 114,6 L 112,18 Q 65,7 18,18 Z" fill="#2a1005"/>
-          <path d="M 6,105 Q 6,122 20,124 L 110,124 Q 124,122 124,105 L 118,100 Q 118,116 110,118 L 20,118 Q 12,116 12,100 Z" fill="#2a1005"/>
-          <ellipse cx="65" cy="8" rx="49" ry="11" fill="url(#lGInner)"/>
-          <ellipse cx="65" cy="8" rx="49" ry="11" fill="none" stroke="rgba(80,30,10,0.4)" stroke-width="1.5"/>
-        </g>
-      </svg>
+  </div>
+  <!-- QR-SCAN ARRIVAL: shown only when landing via ?room=XXXX -->
+  <div class="join-banner" id="qr-join-banner" style="display:none">
+    <div class="jb-label">🎟️ Joining Room</div>
+    <div class="jb-code" id="qr-join-code">—</div>
+    <input type="text" class="lobby-name-input" id="inp-name-qr" placeholder="Your name" maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false" style="margin-top:12px">
+    <button class="btn-primary" id="btn-multiplayer" style="width:100%;margin-top:10px">✅ JOIN GAME</button>
+  </div>
+
+  <!-- DYNAMIC LOBBY ZONE: 3-column tablet/TV layout, or the solo name panel -->
+  <div class="name-form" id="lobby-zone">
+    <div class="lobby-columns" id="lobby-columns">
+      <!-- LEFT: room creation -->
+      <div class="lobby-col" id="col-create">
+        <button class="btn-primary" id="btn-create-room" style="width:100%">🆕 CREATE ROOM</button>
+        <div class="qr-wrap" id="create-qr-wrap" style="display:none">
+          <img id="create-qr-img" alt="QR code to join this room">
+        </div>
+        <button class="btn-primary" id="btn-tv-host-start" style="width:100%;display:none" disabled>🎲 START GAME</button>
+        <button class="lobby-back" id="btn-tv-host-close" style="display:none">✕ CANCEL ROOM</button>
+      </div>
+      <!-- CENTER TOP: illustration -->
+      <div class="lobby-illustration">
+        <div class="logo-svg-container">
+          <svg width="260" height="165" viewBox="-10 55 300 190" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+            <defs>
+              <linearGradient id="lG1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5c2e10"/><stop offset="45%" stop-color="#3d1e08"/><stop offset="100%" stop-color="#200e04"/></linearGradient>
+              <linearGradient id="lGInner" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0a0402"/><stop offset="100%" stop-color="#050200"/></linearGradient>
+              <linearGradient id="lGHL" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="rgba(160,80,30,0.35)"/><stop offset="100%" stop-color="rgba(0,0,0,0)"/></linearGradient>
+              <linearGradient id="dieG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#faf5e8"/><stop offset="100%" stop-color="#e8d8b8"/></linearGradient>
+              <radialGradient id="trayG" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#358048"/><stop offset="60%" stop-color="#2d6a3f"/><stop offset="100%" stop-color="#1a3d24"/></radialGradient>
+              <filter id="dS"><feDropShadow dx="2" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.6"/></filter>
+              <filter id="cS"><feDropShadow dx="3" dy="5" stdDeviation="7" flood-color="#000" flood-opacity="0.75"/></filter>
+            </defs>
+            <ellipse cx="140" cy="135" rx="105" ry="72" fill="url(#trayG)" stroke="#1a3020" stroke-width="5"/>
+            <ellipse cx="140" cy="135" rx="105" ry="72" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2"/>
+            <g filter="url(#dS)" transform="translate(88,115) rotate(-18)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="18" cy="18" r="4" fill="#1a0f05"/></g>
+            <g filter="url(#dS)" transform="translate(128,140) rotate(10)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="10" r="3.5" fill="#1a0f05"/><circle cx="10" cy="26" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/></g>
+            <g filter="url(#dS)" transform="translate(170,110) rotate(22)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/></g>
+            <g filter="url(#dS)" transform="translate(185,148) rotate(-12)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="10" r="3.5" fill="#1a0f05"/><circle cx="18" cy="18" r="3.5" fill="#1a0f05"/><circle cx="10" cy="26" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/></g>
+            <g filter="url(#dS)" transform="translate(108,152) rotate(5)"><rect width="36" height="36" rx="6" fill="url(#dieG)" stroke="#d8c8a0" stroke-width="0.7"/><circle cx="10" cy="10" r="3.5" fill="#1a0f05"/><circle cx="26" cy="10" r="3.5" fill="#1a0f05"/><circle cx="10" cy="26" r="3.5" fill="#1a0f05"/><circle cx="26" cy="26" r="3.5" fill="#1a0f05"/><circle cx="10" cy="18" r="3.5" fill="#1a0f05"/><circle cx="26" cy="18" r="3.5" fill="#1a0f05"/></g>
+            <g filter="url(#cS)" transform="translate(215,95) rotate(108,65,55)" style="isolation:isolate">
+              <path d="M 18,8 L 6,105 Q 6,118 20,120 L 110,120 Q 124,118 124,105 L 112,8 Z" fill="url(#lG1)"/>
+              <path d="M 22,10 L 12,100 Q 12,112 22,114 L 46,114 L 52,10 Z" fill="url(#lGHL)"/>
+              <line x1="38" y1="12" x2="30" y2="114" stroke="rgba(0,0,0,0.2)" stroke-width="0.8" stroke-dasharray="5,4"/>
+              <line x1="65" y1="9" x2="65" y2="116" stroke="rgba(0,0,0,0.15)" stroke-width="0.8" stroke-dasharray="5,4"/>
+              <line x1="92" y1="12" x2="100" y2="114" stroke="rgba(0,0,0,0.2)" stroke-width="0.8" stroke-dasharray="5,4"/>
+              <g fill="rgba(140,70,20,0.45)"><circle cx="38" cy="18" r="1.5"/><circle cx="37" cy="32" r="1.5"/><circle cx="36" cy="46" r="1.5"/><circle cx="35" cy="60" r="1.5"/><circle cx="34" cy="74" r="1.5"/><circle cx="33" cy="88" r="1.5"/><circle cx="32" cy="102" r="1.5"/></g>
+              <g fill="rgba(140,70,20,0.45)"><circle cx="92" cy="18" r="1.5"/><circle cx="93" cy="32" r="1.5"/><circle cx="94" cy="46" r="1.5"/><circle cx="95" cy="60" r="1.5"/><circle cx="96" cy="74" r="1.5"/><circle cx="97" cy="88" r="1.5"/><circle cx="98" cy="102" r="1.5"/></g>
+              <path d="M 16,6 Q 65,-5 114,6 L 112,18 Q 65,7 18,18 Z" fill="#2a1005"/>
+              <path d="M 6,105 Q 6,122 20,124 L 110,124 Q 124,122 124,105 L 118,100 Q 118,116 110,118 L 20,118 Q 12,116 12,100 Z" fill="#2a1005"/>
+              <ellipse cx="65" cy="8" rx="49" ry="11" fill="url(#lGInner)"/>
+              <ellipse cx="65" cy="8" rx="49" ry="11" fill="none" stroke="rgba(80,30,10,0.4)" stroke-width="1.5"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+      <!-- RIGHT: menu -->
+      <div class="lobby-col" id="col-menu">
+        <button class="btn-primary" id="btn-how-to-play">📖 HOW TO PLAY &amp; SETUP</button>
+        <button class="btn-secondary" id="btn-multiplayer-menu">👥 MULTIPLAYER</button>
+        <button class="btn-secondary" id="btn-solo-open">🎲 PRACTICE SOLO</button>
+      </div>
+      <!-- CENTER BOTTOM: live player list, directly under the illustration -->
+      <div class="lobby-col" id="col-players">
+        <div class="player-list-title">Players at the Table</div>
+        <div id="tv-host-player-list"><div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div></div>
+        <button class="lobby-back" id="btn-clear-bans">🚫 CLEAR ALL BANS</button>
+      </div>
+    </div>
+
+    <!-- PRACTICE SOLO: name asked only at this moment -->
+    <div id="solo-name-panel" style="display:none;width:100%;flex-direction:column;gap:12px;">
+      <label for="inp-name-solo">Your Name</label>
+      <input type="text" class="lobby-name-input" id="inp-name-solo" placeholder="Enter your name" maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="btn-primary" id="btn-start">🎲 START SOLO GAME</button>
+      <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="name-form">
-    <label for="inp-name">Your Name</label>
-    <input type="text" id="inp-name" placeholder="Enter your name" maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
-    <button class="btn-primary" id="btn-how-to-play">📖 HOW TO PLAY &amp; SETUP</button>
-    <button class="btn-secondary" id="btn-multiplayer">👥 MULTIPLAYER</button>
-    <button class="btn-secondary" id="btn-tv-view">📺 TV VIEW — JUMBOTRON</button>
-    <button class="btn-secondary" id="btn-start">🎲 PRACTICE SOLO</button>
-  </div>
-  <div class="version-tag">v 6.17.2 Cobalt · Jumbotron Rebalance</div>
+  <div class="version-tag">v 6.18 Cobalt · Tablet Lobby Revival</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -684,9 +761,9 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 <div id="screen-lobby" class="screen">
   <button class="lobby-back" id="btn-lobby-back">← BACK</button>
   <div class="lobby-title">MULTIPLAYER</div><div class="lobby-sub">Casino Royale Edition</div>
-  <div class="lobby-card"><div class="lobby-card-title">🎰 Host a Table</div><p>Create a private room and share the code.</p><button class="btn-primary" id="btn-host">CREATE ROOM</button></div>
+  <div class="lobby-card"><div class="lobby-card-title">🎰 Host a Table</div><p>Create a private room and share the code.</p><input type="text" class="lobby-name-input" id="inp-host-name" placeholder="Your name" maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false"><button class="btn-primary" id="btn-host">CREATE ROOM</button></div>
   <div class="lobby-divider">— OR —</div>
-  <div class="lobby-card"><div class="lobby-card-title">🎟️ Join a Table</div><p>Enter the 4-digit code from your host.</p><div class="code-input-wrap"><input type="text" id="inp-room-code" maxlength="4" placeholder="1234" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" spellcheck="false"></div><button class="btn-primary" id="btn-join">JOIN ROOM</button></div>
+  <div class="lobby-card"><div class="lobby-card-title">🎟️ Join a Table</div><p>Enter the 4-digit code from your host.</p><div class="code-input-wrap"><input type="text" id="inp-room-code" maxlength="4" placeholder="1234" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" spellcheck="false"></div><input type="text" class="lobby-name-input" id="inp-join-name" placeholder="Your name" maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false"><button class="btn-primary" id="btn-join">JOIN ROOM</button></div>
 </div>
 
 <!-- WAITING ROOM -->
@@ -1140,9 +1217,130 @@ function closeScoreboard(){document.getElementById('screen-scoreboard').classLis
 
 // MULTIPLAYER
 let roomCode=null,roomPlayerId=null,roomIsHost=false,roomActivePid=null,roomUnsub=null,roomPrevStatus=null;
-function openLobby(){const name=document.getElementById('inp-name').value.trim();if(!name){showToast('Enter your name first!');return;}Audio.uiTick();Haptics.tick();playerName=name;localStorage.setItem('bazinco_name',name);showScreen('screen-lobby');}
-async function doHost(){if(!window.CloudRoom){showToast('No connection');return;}const btn=document.getElementById('btn-host');btn.textContent='Creating…';btn.disabled=true;const r=await window.CloudRoom.roomCreate(playerName);btn.textContent='CREATE ROOM';btn.disabled=false;if(r.error){showToast(r.error,2800);return;}roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=true;openWaitingRoom();}
-async function doJoin(){if(!window.CloudRoom){showToast('No connection');return;}const code=document.getElementById('inp-room-code').value.trim();if(code.length!==4){showToast('Enter a 4-digit code');return;}const btn=document.getElementById('btn-join');btn.textContent='Joining…';btn.disabled=true;const r=await window.CloudRoom.roomJoin(code,playerName);btn.textContent='JOIN ROOM';btn.disabled=false;if(r.error){showToast(r.error,2800);return;}roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;openWaitingRoom();}
+// QR join — a room's join URL is https://woodpacker80.github.io/Bazinco/?room=XXXX .
+// TV View now auto-creates its own room and shows the QR right there in the lobby zone —
+// no more typing a code into the TV. The name field is no longer a permanent fixture on the
+// home screen; it only appears inline, in the moment, for Host a Table / Join a Table
+// (phone-only fallback) and Practice Solo. Guests scanning a QR get a name field inline too.
+function qrJoinUrl(code){return location.origin+location.pathname+'?room='+code;}
+function qrImgSrc(code,size=260){return 'https://api.qrserver.com/v1/create-qr-code/?size='+size+'x'+size+'&data='+encodeURIComponent(qrJoinUrl(code));}
+// Persistent per-browser id (not per join) so a kicked/banned player can't just rescan
+// the QR and get a fresh player id — bans are keyed on this, stored in localStorage so
+// it survives reloads on the same device. Clearing site data or using another device/
+// browser resets it — acceptable for a party game, same spirit as Haarlem Hold'em's
+// own per-device ban approach.
+function getDeviceId(){
+  let id=localStorage.getItem('bazinco_device_id');
+  if(!id){id='dev_'+Date.now().toString(36)+Math.random().toString(36).slice(2);localStorage.setItem('bazinco_device_id',id);}
+  return id;
+}
+const pendingRoomCode=(()=>{const c=new URLSearchParams(location.search).get('room');return(c&&/^\d{4}$/.test(c))?c:null;})();
+if(pendingRoomCode){
+  document.getElementById('qr-join-banner').style.display='block';
+  document.getElementById('qr-join-code').textContent=pendingRoomCode;
+  document.getElementById('lobby-columns').style.display='none';
+}
+async function doJoinFromQR(){
+  const name=document.getElementById('inp-name-qr').value.trim();
+  if(!name){showToast('Enter your name first!');return;}
+  playerName=name;localStorage.setItem('bazinco_name',name);
+  if(!window.CloudRoom){showToast('No connection');return;}
+  const btn=document.getElementById('btn-multiplayer');
+  btn.textContent='Joining…';btn.disabled=true;
+  const r=await window.CloudRoom.roomJoin(pendingRoomCode,name,getDeviceId());
+  btn.disabled=false;btn.textContent='✅ JOIN GAME';
+  if(r.error){showToast(r.error,2800);return;}
+  roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;openWaitingRoom();
+}
+async function doHost(){
+  const name=document.getElementById('inp-host-name').value.trim();
+  if(!name){showToast('Enter your name first!');return;}
+  if(!window.CloudRoom){showToast('No connection');return;}
+  playerName=name;localStorage.setItem('bazinco_name',name);
+  const btn=document.getElementById('btn-host');btn.textContent='Creating…';btn.disabled=true;
+  const r=await window.CloudRoom.roomCreate(name,getDeviceId());
+  btn.textContent='CREATE ROOM';btn.disabled=false;
+  if(r.error){showToast(r.error,2800);return;}
+  roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=true;openWaitingRoom();
+}
+async function doJoin(){
+  const name=document.getElementById('inp-join-name').value.trim();
+  if(!name){showToast('Enter your name first!');return;}
+  if(!window.CloudRoom){showToast('No connection');return;}
+  const code=document.getElementById('inp-room-code').value.trim();
+  if(code.length!==4){showToast('Enter a 4-digit code');return;}
+  playerName=name;localStorage.setItem('bazinco_name',name);
+  const btn=document.getElementById('btn-join');btn.textContent='Joining…';btn.disabled=true;
+  const r=await window.CloudRoom.roomJoin(code,name,getDeviceId());
+  btn.textContent='JOIN ROOM';btn.disabled=false;
+  if(r.error){showToast(r.error,2800);return;}
+  roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;openWaitingRoom();
+}
+
+// TV SELF-HOSTING: tapping "Create Room" auto-creates an empty room (no player attached)
+// and shows its QR/player-list/Start-Game right in the 3-column lobby. Whoever's at the
+// tablet controls Start Game / Cancel Room directly — no phone ever has to "be the host."
+let tvRoomCode=null,tvUnsub=null;
+async function tvHostStart(){
+  Audio.unlock();Audio.uiTick();Haptics.tick();
+  document.getElementById('btn-create-room').style.display='none';
+  document.getElementById('create-qr-wrap').style.display='none';
+  document.getElementById('tv-host-player-list').innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;">Waiting for players…</div>';
+  if(!window.CloudRoom){showToast('No connection');return;}
+  const r=await window.CloudRoom.roomCreateEmpty();
+  tvRoomCode=r.code;
+  document.getElementById('create-qr-img').src=qrImgSrc(tvRoomCode,140);
+  document.getElementById('create-qr-wrap').style.display='flex';
+  document.getElementById('btn-tv-host-start').style.display='block';
+  document.getElementById('btn-tv-host-close').style.display='flex';
+  if(tvUnsub){tvUnsub();tvUnsub=null;}
+  tvUnsub=window.CloudRoom.roomListen(tvRoomCode,tvOnRoomUpdate);
+}
+async function tvKickPlayer(pid){
+  Audio.uiTick();Haptics.tick();
+  if(!tvRoomCode||!window.CloudRoom)return;
+  if(!confirm('Kick this player? They will not be able to rejoin until bans are cleared.'))return;
+  await window.CloudRoom.roomKick(tvRoomCode,pid);
+}
+function tvOnRoomUpdate(room){
+  if(!room)return;
+  if(room.status==='playing'){tvEnterJumbotronDisplay();return;}
+  const players=room.players||{};
+  const entries=Object.entries(players).sort((a,b)=>a[1].ts-b[1].ts);
+  const listEl=document.getElementById('tv-host-player-list');
+  listEl.innerHTML='';
+  entries.forEach(([pid,p])=>{
+    const div=document.createElement('div');
+    div.className='player-item';
+    div.innerHTML=`<div class="player-avatar">🎲</div><div class="player-item-name">${p.name||'?'}</div>`;
+    const kickBtn=document.createElement('button');
+    kickBtn.className='kick-btn';kickBtn.textContent='KICK';
+    kickBtn.addEventListener('click',()=>tvKickPlayer(pid));
+    div.appendChild(kickBtn);
+    listEl.appendChild(div);
+  });
+  const startBtn=document.getElementById('btn-tv-host-start');
+  const ok=entries.length>=2;
+  startBtn.disabled=!ok;startBtn.style.opacity=ok?'1':'0.4';
+}
+function tvEnterJumbotronDisplay(){
+  if(tvUnsub){tvUnsub();tvUnsub=null;}
+  document.getElementById('jmb-room-code').textContent=tvRoomCode;
+  document.getElementById('screen-jumbotron').classList.add('active');
+  if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
+  jmbUnsub=window.CloudRoom.roomListen(tvRoomCode,jmbOnRoomUpdate);
+}
+async function tvHostClose(){
+  Audio.uiTick();Haptics.tick();
+  if(tvUnsub){tvUnsub();tvUnsub=null;}
+  if(tvRoomCode&&window.CloudRoom)await window.CloudRoom.roomCleanup(tvRoomCode);
+  tvRoomCode=null;
+  document.getElementById('btn-create-room').style.display='block';
+  document.getElementById('create-qr-wrap').style.display='none';
+  document.getElementById('btn-tv-host-start').style.display='none';
+  document.getElementById('btn-tv-host-close').style.display='none';
+  document.getElementById('tv-host-player-list').innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div>';
+}
 function openWaitingRoom(){
   showScreen('screen-waiting');
   document.getElementById('waiting-title').textContent=roomIsHost?'YOUR TABLE':'WAITING ROOM';
@@ -1233,8 +1431,26 @@ function resetRoomState(){roomCode=null;roomPlayerId=null;roomIsHost=false;roomA
 // JUMBOTRON
 let jmbUnsub=null,jmbPrevStatus=null,jmbPrevRollTs=null,jmbPrevBazScore=0,jmbPrevActivePid=null;
 function jmbSetState(st){['entry','waiting','playing','done'].forEach(s=>{const el=document.getElementById('jmb-st-'+s);if(el)el.classList.toggle('vis',s===st);});}
-function openJumbotron(){Audio.uiTick();Haptics.tick();document.getElementById('screen-jumbotron').classList.add('active');jmbSetState('entry');}
-function closeJumbotron(){Audio.uiTick();Haptics.tick();if(jmbUnsub){jmbUnsub();jmbUnsub=null;}document.getElementById('screen-jumbotron').classList.remove('active');document.getElementById('jmb-room-code').textContent='—';}
+function closeJumbotron(){
+  Audio.uiTick();Haptics.tick();
+  if(tvRoomCode){
+    if(!confirm('Close the room and end the session for all players?'))return;
+    // Unsubscribe BEFORE cleanup — Firebase's local optimistic write from remove() can
+    // fire this same listener synchronously with room=null before the async remove()
+    // promise even resolves. Unsubscribing first means there's nothing left to catch it.
+    if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
+    if(window.CloudRoom)window.CloudRoom.roomCleanup(tvRoomCode);
+    tvRoomCode=null;
+    document.getElementById('btn-create-room').style.display='block';
+    document.getElementById('create-qr-wrap').style.display='none';
+    document.getElementById('btn-tv-host-start').style.display='none';
+    document.getElementById('btn-tv-host-close').style.display='none';
+    document.getElementById('tv-host-player-list').innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div>';
+  }
+  if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
+  document.getElementById('screen-jumbotron').classList.remove('active');
+  document.getElementById('jmb-room-code').textContent='—';
+}
 function jmbConnect(){
   Audio.unlock();
   const code=document.getElementById('jmb-code-input').value.trim();
@@ -1250,6 +1466,7 @@ function jmbConnect(){
   });
 }
 function jmbOnRoomUpdate(room){
+  if(!room)return; // room was deleted (e.g. Close Room / Cancel Room) — nothing to render
   const players=room.players||{};
   const entries=Object.entries(players).sort((a,b)=>a[1].ts-b[1].ts);
   // Fix 2: safe name — use first 4 chars of pid if player.name is missing
@@ -1519,10 +1736,32 @@ function closeDropdown(){document.getElementById('dropdown-menu').classList.remo
 
 // EVENT LISTENERS
 document.getElementById('btn-how-to-play').addEventListener('click',()=>{Audio.uiTick();document.getElementById('screen-rules').classList.add('active');});
-document.getElementById('btn-start').addEventListener('click',()=>{const name=document.getElementById('inp-name').value.trim();if(!name){showToast('Enter your name first!');return;}Audio.unlock();Audio.uiTick();Haptics.tick();playerName=name;localStorage.setItem('bazinco_name',name);resetRoomState();initGame();});
-document.getElementById('inp-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-start').click();});
-document.getElementById('btn-multiplayer').addEventListener('click',()=>{Audio.unlock();openLobby();});
-document.getElementById('btn-tv-view').addEventListener('click',()=>{Audio.unlock();openJumbotron();});
+document.getElementById('btn-solo-open').addEventListener('click',()=>{
+  Audio.uiTick();Haptics.tick();
+  document.getElementById('lobby-columns').style.display='none';
+  document.getElementById('solo-name-panel').style.display='flex';
+  const saved=localStorage.getItem('bazinco_name');if(saved)document.getElementById('inp-name-solo').value=saved;
+});
+document.getElementById('btn-solo-back').addEventListener('click',()=>{
+  Audio.uiTick();Haptics.tick();
+  document.getElementById('solo-name-panel').style.display='none';
+  document.getElementById('lobby-columns').style.display='grid';
+});
+document.getElementById('btn-start').addEventListener('click',()=>{const name=document.getElementById('inp-name-solo').value.trim();if(!name){showToast('Enter your name first!');return;}Audio.unlock();Audio.uiTick();Haptics.tick();playerName=name;localStorage.setItem('bazinco_name',name);resetRoomState();initGame();});
+document.getElementById('inp-name-solo').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-start').click();});
+document.getElementById('btn-multiplayer').addEventListener('click',()=>{Audio.unlock();doJoinFromQR();});
+document.getElementById('inp-name-qr').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-multiplayer').click();});
+document.getElementById('btn-multiplayer-menu').addEventListener('click',()=>{Audio.unlock();Audio.uiTick();Haptics.tick();showScreen('screen-lobby');});
+document.getElementById('btn-create-room').addEventListener('click',()=>{tvHostStart();});
+document.getElementById('btn-tv-host-start').addEventListener('click',async()=>{Audio.unlock();Audio.uiTick();Haptics.tick();if(tvRoomCode&&window.CloudRoom)await window.CloudRoom.roomStart(tvRoomCode);});
+document.getElementById('btn-tv-host-close').addEventListener('click',()=>{tvHostClose();});
+document.getElementById('btn-clear-bans').addEventListener('click',async()=>{
+  Audio.uiTick();Haptics.tick();
+  if(!tvRoomCode||!window.CloudRoom)return;
+  if(!confirm('Clear all bans for this room? Previously kicked players will be able to rejoin.'))return;
+  await window.CloudRoom.roomClearBans(tvRoomCode);
+  showToast('Bans cleared',2000);
+});
 document.getElementById('btn-lobby-back').addEventListener('click',()=>{Audio.uiTick();Haptics.tick();showScreen('screen-name');});
 document.getElementById('btn-host').addEventListener('click',()=>{Audio.uiTick();Haptics.tick();doHost();});
 document.getElementById('btn-join').addEventListener('click',()=>{Audio.uiTick();Haptics.tick();doJoin();});
@@ -1563,7 +1802,12 @@ document.getElementById('jmb-code-input').addEventListener('keydown',e=>{if(e.ke
 document.addEventListener('click',e=>{const dd=document.getElementById('dropdown-menu');const btn=document.getElementById('btn-menu');if(!dd||!btn)return;if(!dd.contains(e.target)&&!btn.contains(e.target))closeDropdown();});
 
 // STARTUP
-const saved=localStorage.getItem('bazinco_name');if(saved)document.getElementById('inp-name').value=saved;
+const savedName=localStorage.getItem('bazinco_name');
+if(savedName){
+  document.getElementById('inp-name-qr').value=savedName;
+  document.getElementById('inp-host-name').value=savedName;
+  document.getElementById('inp-join-name').value=savedName;
+}
 </script>
 </body>
 </html>
