@@ -422,7 +422,9 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .kick-btn:active{background:rgba(190,22,34,0.15);}
 @media (max-width:720px){
   .lobby-columns{grid-template-columns:1fr;gap:20px;}
-  #col-players,.lobby-illustration,#col-menu{grid-column:1;}
+  #col-menu{grid-column:1;grid-row:1;}
+  .lobby-illustration{grid-column:1;grid-row:2;}
+  #col-players{grid-column:1;grid-row:3;}
 }
 .player-list{display:flex;flex-direction:column;gap:8px;width:100%;max-width:480px;margin:0 auto;}
 .player-list-title{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--text2);text-align:center;}
@@ -686,7 +688,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.21.1 Cobalt · No Icons</div>
+  <div class="version-tag">v 6.21.2 Cobalt · Mobile Stack Fix</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
