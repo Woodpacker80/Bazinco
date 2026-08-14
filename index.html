@@ -50,6 +50,7 @@ async function roomKick(code,pid){
   }catch(e){}
 }
 async function roomClearBans(code){try{await remove(ref(db,`${RP}/${code}/bans`));}catch(e){}}
+async function roomClearPlayers(code){try{await remove(ref(db,`${RP}/${code}/players`));}catch(e){}}
 async function roomStart(code){
   const snap=await get(ref(db,`${RP}/${code}`));if(!snap.exists())return;
   const sorted=Object.entries(snap.val().players||{}).sort((a,b)=>a[1].ts-b[1].ts).map(([p])=>p);
@@ -140,7 +141,7 @@ function roomListen(code,cb){
   });
 }
 window.CloudScores={cloudAddScore,cloudWatchScores};
-window.CloudRoom={roomCreate,roomCreateEmpty,roomJoin,roomKick,roomClearBans,roomStart,roomBankScore,roomSaveFinalScore,roomBroadcastDice,roomCleanup,roomListen,roomLeave,roomRestart};
+window.CloudRoom={roomCreate,roomCreateEmpty,roomJoin,roomKick,roomClearBans,roomClearPlayers,roomStart,roomBankScore,roomSaveFinalScore,roomBroadcastDice,roomCleanup,roomListen,roomLeave,roomRestart};
 </script>
 <style>
 :root{--felt:#2d6a3f;--felt2:#245532;--felt3:#1a3d24;--felt-light:#358048;--tray-rim:#1a3020;--bg:#0F2A55;--surface:#173B75;--surface2:#1E4B8F;--border:#2D65BA;--header-bg:#0A1C3A;--gold:#c9972a;--gold2:#e8bc55;--gold3:#f5d878;--text:#ffffff;--text2:#a8c8ff;--muted:#6899dd;--held-bdr:#4abf68;--radius:13px;--shadow:0 8px 32px rgba(0,0,0,0.6);}
@@ -623,8 +624,9 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <!-- RIGHT: live player list — full column height, room to grow -->
       <div class="lobby-col" id="col-players">
         <div class="btn-primary" style="width:100%;text-align:center;">Players at the Table</div>
-        <div id="tv-host-player-list"><div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div></div>
-        <button class="lobby-back" id="btn-clear-bans">🚫 CLEAR ALL BANS</button>
+        <div id="tv-host-player-list"></div>
+        <button class="btn-secondary" id="btn-clear-room">🧹 CLEAR THE ROOM</button>
+        <button class="btn-secondary" id="btn-clear-bans">CLEAR ALL BANS</button>
       </div>
       <!-- CENTER: illustration + room creation, one continuous stack -->
       <div class="lobby-illustration" id="col-create">
@@ -684,7 +686,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.20.8 Cobalt · Uniform Buttons</div>
+  <div class="version-tag">v 6.21 Cobalt · No Icon</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -1335,7 +1337,7 @@ async function tvHostClose(){
   document.getElementById('create-qr-wrap').style.display='none';
   document.getElementById('btn-tv-host-start').style.display='none';
   document.getElementById('btn-tv-host-close').style.display='none';
-  document.getElementById('tv-host-player-list').innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div>';
+  document.getElementById('tv-host-player-list').innerHTML='';
 }
 function openWaitingRoom(){
   showScreen('screen-waiting');
@@ -1441,7 +1443,7 @@ function closeJumbotron(){
     document.getElementById('create-qr-wrap').style.display='none';
     document.getElementById('btn-tv-host-start').style.display='none';
     document.getElementById('btn-tv-host-close').style.display='none';
-    document.getElementById('tv-host-player-list').innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div>';
+    document.getElementById('tv-host-player-list').innerHTML='';
   }
   if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
   document.getElementById('screen-jumbotron').classList.remove('active');
@@ -1751,6 +1753,13 @@ document.getElementById('btn-multiplayer-menu').addEventListener('click',()=>{Au
 document.getElementById('btn-create-room').addEventListener('click',()=>{tvHostStart();});
 document.getElementById('btn-tv-host-start').addEventListener('click',async()=>{Audio.unlock();Audio.uiTick();Haptics.tick();if(tvRoomCode&&window.CloudRoom)await window.CloudRoom.roomStart(tvRoomCode);});
 document.getElementById('btn-tv-host-close').addEventListener('click',()=>{tvHostClose();});
+document.getElementById('btn-clear-room').addEventListener('click',async()=>{
+  Audio.uiTick();Haptics.tick();
+  if(!tvRoomCode||!window.CloudRoom)return;
+  if(!confirm('Remove all players from this room? They can rejoin using the same QR code — this does not ban anyone.'))return;
+  await window.CloudRoom.roomClearPlayers(tvRoomCode);
+  showToast('Room cleared',2000);
+});
 document.getElementById('btn-clear-bans').addEventListener('click',async()=>{
   Audio.uiTick();Haptics.tick();
   if(!tvRoomCode||!window.CloudRoom)return;
