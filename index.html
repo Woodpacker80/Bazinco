@@ -408,21 +408,21 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .join-banner .jb-code{font-family:'Cinzel',serif;font-size:22px;font-weight:900;color:var(--gold2);letter-spacing:4px;}
 .lobby-name-input{width:100%;box-sizing:border-box;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;padding:12px 16px;outline:none;text-align:center;transition:border-color 0.2s,box-shadow 0.2s;}
 .lobby-name-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,151,42,0.12);}
-.lobby-columns{width:100%;max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto;gap:22px 28px;align-items:start;}
-#col-create{grid-column:1;grid-row:1;}
-.lobby-illustration{grid-column:2;grid-row:1;display:flex;justify-content:center;}
-#col-menu{grid-column:3;grid-row:1;}
-#col-players{grid-column:2;grid-row:2;}
+.lobby-columns{width:100%;max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px 28px;align-items:start;}
+#col-create{grid-column:1;}
+.lobby-illustration{grid-column:2;display:flex;flex-direction:column;gap:18px;}
+.lobby-illustration .logo-svg-container{align-self:center;}
+#col-menu{grid-column:3;}
 .lobby-col{display:flex;flex-direction:column;gap:18px;}
 .lobby-col .qr-wrap img{width:110px;height:110px;}
-.lobby-col .player-list-title{margin-bottom:4px;}
+.lobby-illustration .player-list-title{margin-bottom:4px;}
 #tv-host-player-list{display:flex;flex-direction:column;gap:10px;}
 #tv-host-player-list .player-item{justify-content:space-between;}
 .kick-btn{background:transparent;border:1px solid rgba(190,22,34,0.4);color:#e06a72;border-radius:8px;font-size:10px;letter-spacing:1px;padding:5px 9px;cursor:pointer;text-transform:uppercase;}
 .kick-btn:active{background:rgba(190,22,34,0.15);}
 @media (max-width:720px){
-  .lobby-columns{grid-template-columns:1fr;grid-template-rows:auto;gap:20px;}
-  #col-create,.lobby-illustration,#col-menu,#col-players{grid-column:1;grid-row:auto;}
+  .lobby-columns{grid-template-columns:1fr;gap:20px;}
+  #col-create,.lobby-illustration,#col-menu{grid-column:1;}
 }
 .player-list{display:flex;flex-direction:column;gap:8px;width:100%;max-width:480px;margin:0 auto;}
 .player-list-title{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--text2);text-align:center;}
@@ -630,9 +630,9 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
         <button class="btn-primary" id="btn-tv-host-start" style="width:100%;display:none" disabled>🎲 START GAME</button>
         <button class="lobby-back" id="btn-tv-host-close" style="display:none">✕ CANCEL ROOM</button>
       </div>
-      <!-- CENTER TOP: illustration -->
-      <div class="lobby-illustration">
-        <div class="logo-svg-container">
+      <!-- CENTER: illustration + player list, one continuous stack -->
+      <div class="lobby-illustration" id="col-players">
+        <div class="logo-svg-container" style="transform:translateX(-53px)">
           <svg width="260" height="165" viewBox="-10 55 300 190" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
             <defs>
               <linearGradient id="lG1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5c2e10"/><stop offset="45%" stop-color="#3d1e08"/><stop offset="100%" stop-color="#200e04"/></linearGradient>
@@ -665,18 +665,15 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
             </g>
           </svg>
         </div>
+        <div class="player-list-title">Players at the Table</div>
+        <div id="tv-host-player-list"><div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div></div>
+        <button class="lobby-back" id="btn-clear-bans">🚫 CLEAR ALL BANS</button>
       </div>
       <!-- RIGHT: menu -->
       <div class="lobby-col" id="col-menu">
         <button class="btn-primary" id="btn-how-to-play">📖 HOW TO PLAY &amp; SETUP</button>
         <button class="btn-secondary" id="btn-multiplayer-menu">👥 MULTIPLAYER</button>
         <button class="btn-secondary" id="btn-solo-open">🎲 PRACTICE SOLO</button>
-      </div>
-      <!-- CENTER BOTTOM: live player list, directly under the illustration -->
-      <div class="lobby-col" id="col-players">
-        <div class="player-list-title">Players at the Table</div>
-        <div id="tv-host-player-list"><div style="font-size:12px;color:var(--muted);text-align:center;">Create a room to see players here</div></div>
-        <button class="lobby-back" id="btn-clear-bans">🚫 CLEAR ALL BANS</button>
       </div>
     </div>
 
@@ -688,7 +685,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.18 Cobalt · Tablet Lobby Revival</div>
+  <div class="version-tag">v 6.20.1 Cobalt · Aligned Stack</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
