@@ -131,6 +131,9 @@ async function roomRestart(code){
   }catch(e){console.error('roomRestart error:',e);}
 }
 async function roomCleanup(code){try{await remove(ref(db,`${RP}/${code}`));}catch(e){}}
+// One-shot read (no listener) — used to check a room's state once on page load,
+// e.g. to decide whether a saved session is still resumable after a reload.
+async function roomPeek(code){try{const snap=await get(ref(db,`${RP}/${code}`));return snap.exists()?snap.val():null;}catch(e){return null;}}
 const ROOM_TTL=4*60*60*1000;
 function roomListen(code,cb){
   return onValue(ref(db,`${RP}/${code}`),snap=>{
@@ -141,7 +144,12 @@ function roomListen(code,cb){
   });
 }
 window.CloudScores={cloudAddScore,cloudWatchScores};
-window.CloudRoom={roomCreate,roomCreateEmpty,roomJoin,roomKick,roomClearBans,roomClearPlayers,roomStart,roomBankScore,roomSaveFinalScore,roomBroadcastDice,roomCleanup,roomListen,roomLeave,roomRestart};
+window.CloudRoom={roomCreate,roomCreateEmpty,roomJoin,roomKick,roomClearBans,roomClearPlayers,roomStart,roomBankScore,roomSaveFinalScore,roomBroadcastDice,roomCleanup,roomListen,roomLeave,roomRestart,roomPeek};
+// This module script is always deferred by the spec, so it can finish AFTER the plain
+// <script> below it even though it appears earlier in the file — anything in that script
+// that needs CloudRoom at page-load time (not just inside a later click handler) has to
+// wait for this signal instead of assuming CloudRoom already exists.
+window.dispatchEvent(new Event('cloudroomready'));
 </script>
 <style>
 :root{--felt:#2d6a3f;--felt2:#245532;--felt3:#1a3d24;--felt-light:#358048;--tray-rim:#1a3020;--bg:#0F2A55;--surface:#173B75;--surface2:#1E4B8F;--border:#2D65BA;--header-bg:#0A1C3A;--gold:#c9972a;--gold2:#e8bc55;--gold3:#f5d878;--text:#ffffff;--text2:#a8c8ff;--muted:#6899dd;--held-bdr:#4abf68;--radius:13px;--shadow:0 8px 32px rgba(0,0,0,0.6);}
@@ -688,7 +696,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.22.2 Cobalt · Readable Scorecard</div>
+  <div class="version-tag">v 6.23 Cobalt · Wake Lock &amp; Resume</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -1218,6 +1226,94 @@ function closeScoreboard(){document.getElementById('screen-scoreboard').classLis
 
 // MULTIPLAYER
 let roomCode=null,roomPlayerId=null,roomIsHost=false,roomActivePid=null,roomUnsub=null,roomPrevStatus=null;
+
+// WAKE LOCK — keeps the screen from dimming/locking during an active game or while the
+// TV/tablet is showing the Jumbotron. Best-effort: the Screen Wake Lock API isn't
+// available everywhere, and the OS can still release it on its own, so every call is
+// guarded and failures are silent — losing the lock should never break the game.
+let wakeLock=null;
+async function requestWakeLock(){
+  try{
+    if(!('wakeLock' in navigator))return;
+    wakeLock=await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release',()=>{wakeLock=null;});
+  }catch(e){wakeLock=null;}
+}
+function releaseWakeLock(){
+  if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null;}
+}
+document.addEventListener('visibilitychange',()=>{
+  // A wake lock is auto-released whenever the tab is hidden (backgrounded, screen off).
+  // Re-acquire it when the tab becomes visible again, but only if we're still actually
+  // on a screen that needs it.
+  if(document.visibilityState!=='visible')return;
+  const gameActive=document.getElementById('screen-game')?.classList.contains('active');
+  const jmbActive=document.getElementById('screen-jumbotron')?.classList.contains('active');
+  if(gameActive||jmbActive)requestWakeLock();
+});
+
+// SESSION RESUME — remembers which room this device was in, so an accidental page
+// reload (tab refresh, the tablet's browser reclaiming memory, etc.) drops back into
+// the same room instead of losing it entirely. Best-effort and conservative: if
+// anything looks off (room gone, player removed, etc.) it just falls back to the
+// normal start screen rather than guessing.
+function saveSession(obj){try{localStorage.setItem('bazinco_session',JSON.stringify({...obj,ts:Date.now()}));}catch(e){}}
+function clearSession(){try{localStorage.removeItem('bazinco_session');}catch(e){}}
+function rankPlayers(room){
+  const allPlayers=room.players||{};
+  const U=['ones','twos','threes','fours','fives','sixes'];
+  const L=['threeKind','fourKind','fullHouse','smStraight','lgStraight','chance'];
+  function calcScore(p){const cs=(p&&p.scores&&typeof p.scores==='object')?p.scores:{};const u=U.reduce((t,id)=>t+Number(cs[id]??0),0);const l=L.reduce((t,id)=>t+Number(cs[id]??0),0);return u+l+(u>=63?35:0)+Number(cs['bazinco_pts']||0);}
+  function pName(pid,p){return(p&&p.name&&p.name.trim())||'Player';}
+  return Object.entries(allPlayers).map(([pid,p])=>({name:pName(pid,p),score:calcScore(p),isMe:pid===roomPlayerId})).sort((a,b)=>b.score-a.score);
+}
+async function tryResumeSession(){
+  if(pendingRoomCode)return; // a fresh QR-join link takes priority over an old saved session
+  let sess=null;
+  try{sess=JSON.parse(localStorage.getItem('bazinco_session')||'null');}catch(e){}
+  if(!sess||!sess.roomCode||!window.CloudRoom)return;
+  const room=await window.CloudRoom.roomPeek(sess.roomCode);
+  if(!room){clearSession();return;}
+  if(sess.role==='tv'){
+    tvRoomCode=sess.roomCode;
+    if(room.status==='playing'||room.status==='done'){tvEnterJumbotronDisplay();}
+    else{tvRoomCode=null;clearSession();}
+    return;
+  }
+  if(sess.role==='player'){
+    const myPlayer=(room.players||{})[sess.playerId];
+    if(!myPlayer){clearSession();return;}
+    roomCode=sess.roomCode;roomPlayerId=sess.playerId;roomIsHost=!!sess.isHost;
+    if(room.status==='done'){
+      showEnd(rankPlayers(room));
+      roomPrevStatus='done';
+      roomUnsub=window.CloudRoom.roomListen(roomCode,onRoomUpdate);
+      return;
+    }
+    if(room.status==='playing'){
+      // Rebuild the scorecard from what's already saved in Firebase before showing the
+      // game screen — initGame() always starts from a blank scorecard, so without this
+      // a resumed player would look like they'd lost every category they'd banked.
+      const saved=(myPlayer.scores&&typeof myPlayer.scores==='object')?{...myPlayer.scores}:{};
+      initGame();
+      scores={...saved};delete scores.bazinco_pts;
+      bazPts=Number(saved.bazinco_pts||0);
+      bazCount=bazPts>=50?Math.round((bazPts-50)/100)+1:0;
+      renderSheet();
+      const ds=room.diceState;
+      if(ds&&ds.pid===roomPlayerId&&Array.isArray(ds.dice)){
+        dice=[...ds.dice];held=[...(ds.held||[false,false,false,false,false])];rollsLeft=ds.rollsLeft??3;
+        hasRolled=dice.some(v=>v>0);
+        renderDiceRow();renderRollUI();
+      }
+      roomPrevStatus='playing';
+      roomUnsub=window.CloudRoom.roomListen(roomCode,onRoomUpdate);
+      return;
+    }
+    // Still in the waiting room — resume normally, nothing to hydrate yet.
+    openWaitingRoom();
+  }
+}
 // QR join — a room's join URL is https://woodpacker80.github.io/Bazinco/?room=XXXX .
 // TV View now auto-creates its own room and shows the QR right there in the lobby zone —
 // no more typing a code into the TV. The name field is no longer a permanent fixture on the
@@ -1241,6 +1337,7 @@ if(pendingRoomCode){
   document.getElementById('qr-join-code').textContent=pendingRoomCode;
   document.getElementById('lobby-columns').style.display='none';
 }
+if(window.CloudRoom){tryResumeSession();}else{window.addEventListener('cloudroomready',tryResumeSession,{once:true});}
 async function doJoinFromQR(){
   const name=document.getElementById('inp-name-qr').value.trim();
   if(!name){showToast('Enter your name first!');return;}
@@ -1251,7 +1348,9 @@ async function doJoinFromQR(){
   const r=await window.CloudRoom.roomJoin(pendingRoomCode,name,getDeviceId());
   btn.disabled=false;btn.textContent='✅ JOIN GAME';
   if(r.error){showToast(r.error,2800);return;}
-  roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;openWaitingRoom();
+  roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;
+  saveSession({role:'player',roomCode,playerId:roomPlayerId,isHost:false});
+  openWaitingRoom();
 }
 async function doHost(){
   const name=document.getElementById('inp-host-name').value.trim();
@@ -1262,7 +1361,9 @@ async function doHost(){
   const r=await window.CloudRoom.roomCreate(name,getDeviceId());
   btn.textContent='CREATE ROOM';btn.disabled=false;
   if(r.error){showToast(r.error,2800);return;}
-  roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=true;openWaitingRoom();
+  roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=true;
+  saveSession({role:'player',roomCode,playerId:roomPlayerId,isHost:true});
+  openWaitingRoom();
 }
 async function doJoin(){
   const name=document.getElementById('inp-join-name').value.trim();
@@ -1275,7 +1376,9 @@ async function doJoin(){
   const r=await window.CloudRoom.roomJoin(code,name,getDeviceId());
   btn.textContent='JOIN ROOM';btn.disabled=false;
   if(r.error){showToast(r.error,2800);return;}
-  roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;openWaitingRoom();
+  roomCode=r.code;roomPlayerId=r.playerId;roomIsHost=false;
+  saveSession({role:'player',roomCode,playerId:roomPlayerId,isHost:false});
+  openWaitingRoom();
 }
 
 // TV SELF-HOSTING: tapping "Create Room" auto-creates an empty room (no player attached)
@@ -1290,6 +1393,7 @@ async function tvHostStart(){
   if(!window.CloudRoom){showToast('No connection');return;}
   const r=await window.CloudRoom.roomCreateEmpty();
   tvRoomCode=r.code;
+  saveSession({role:'tv',roomCode:tvRoomCode});
   document.getElementById('create-qr-img').src=qrImgSrc(tvRoomCode,140);
   document.getElementById('create-qr-wrap').style.display='flex';
   document.getElementById('btn-tv-host-start').style.display='block';
@@ -1304,7 +1408,7 @@ async function tvKickPlayer(pid){
   await window.CloudRoom.roomKick(tvRoomCode,pid);
 }
 function tvOnRoomUpdate(room){
-  if(!room)return;
+  if(!room){clearSession();return;}
   if(room.status==='playing'){tvEnterJumbotronDisplay();return;}
   const players=room.players||{};
   const entries=Object.entries(players).sort((a,b)=>a[1].ts-b[1].ts);
@@ -1330,12 +1434,15 @@ function tvEnterJumbotronDisplay(){
   document.getElementById('screen-jumbotron').classList.add('active');
   if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
   jmbUnsub=window.CloudRoom.roomListen(tvRoomCode,jmbOnRoomUpdate);
+  requestWakeLock();
 }
 async function tvHostClose(){
   Audio.uiTick();Haptics.tick();
   if(tvUnsub){tvUnsub();tvUnsub=null;}
   if(tvRoomCode&&window.CloudRoom)await window.CloudRoom.roomCleanup(tvRoomCode);
   tvRoomCode=null;
+  clearSession();
+  releaseWakeLock();
   document.getElementById('btn-create-room').style.display='block';
   document.getElementById('create-qr-wrap').style.display='none';
   document.getElementById('btn-tv-host-start').style.display='none';
@@ -1352,28 +1459,14 @@ function openWaitingRoom(){
   roomUnsub=window.CloudRoom.roomListen(roomCode,onRoomUpdate);
 }
 function onRoomUpdate(room){
-  if(!room){if(roomUnsub){roomUnsub();roomUnsub=null;}showToast('Room closed',3000);resetRoomState();showScreen('screen-name');return;}
+  if(!room){if(roomUnsub){roomUnsub();roomUnsub=null;}showToast('Room closed',3000);resetRoomState();clearSession();showScreen('screen-name');return;}
   // ── DONE: permanent end-game screen replaces ephemeral toast ──
   if(room.status==='done'){
     // Keep roomUnsub alive so restart events (status:'playing') are received
     // 2500ms — gives Firebase time to sync all final scores before we read them
     setTimeout(()=>{
-      const allPlayers=room.players||{};
-      const U=['ones','twos','threes','fours','fives','sixes'];
-      const L=['threeKind','fourKind','fullHouse','smStraight','lgStraight','chance'];
-      function calcScore(p){
-        const cs=(p&&p.scores&&typeof p.scores==='object')?p.scores:{};
-        const u=U.reduce((t,id)=>t+Number(cs[id]??0),0);
-        const l=L.reduce((t,id)=>t+Number(cs[id]??0),0);
-        return u+l+(u>=63?35:0)+Number(cs['bazinco_pts']||0);
-      }
-      function pName(pid,p){return(p&&p.name&&p.name.trim())||'Player';}
-      // Build ranked list — mark which entry is this player
-      const ranked=Object.entries(allPlayers)
-        .map(([pid,p])=>({name:pName(pid,p),score:calcScore(p),isMe:pid===roomPlayerId}))
-        .sort((a,b)=>b.score-a.score);
       // Show the permanent end-game lobby screen with leaderboard
-      showEnd(ranked);
+      showEnd(rankPlayers(room));
       // Unified Grand Finale — fires on all phones simultaneously
       Audio.victoryFanfare();
       triggerPhoneVictory();
@@ -1426,7 +1519,7 @@ function onRoomUpdate(room){
   roomPrevStatus=room.status;
 }
 async function doStartGame(){if(!window.CloudRoom)return;Audio.uiTick();Haptics.tick();await window.CloudRoom.roomStart(roomCode);}
-async function leaveRoom(){Audio.uiTick();Haptics.tick();if(roomUnsub){roomUnsub();roomUnsub=null;}if(roomCode&&roomIsHost&&window.CloudRoom)await window.CloudRoom.roomCleanup(roomCode);resetRoomState();showScreen('screen-name');}
+async function leaveRoom(){Audio.uiTick();Haptics.tick();if(roomUnsub){roomUnsub();roomUnsub=null;}if(roomCode&&roomIsHost&&window.CloudRoom)await window.CloudRoom.roomCleanup(roomCode);resetRoomState();clearSession();releaseWakeLock();showScreen('screen-name');}
 function resetRoomState(){roomCode=null;roomPlayerId=null;roomIsHost=false;roomActivePid=null;roomPrevStatus=null;}
 
 // FULLSCREEN (game-screen only — toggled via the jumbotron header button)
@@ -1461,6 +1554,7 @@ function closeJumbotron(){
     if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
     if(window.CloudRoom)window.CloudRoom.roomCleanup(tvRoomCode);
     tvRoomCode=null;
+    clearSession();
     document.getElementById('btn-create-room').style.display='block';
     document.getElementById('create-qr-wrap').style.display='none';
     document.getElementById('btn-tv-host-start').style.display='none';
@@ -1470,6 +1564,7 @@ function closeJumbotron(){
   if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
   document.getElementById('screen-jumbotron').classList.remove('active');
   document.getElementById('jmb-room-code').textContent='—';
+  releaseWakeLock();
 }
 function jmbConnect(){
   Audio.unlock();
@@ -1486,7 +1581,7 @@ function jmbConnect(){
   });
 }
 function jmbOnRoomUpdate(room){
-  if(!room)return; // room was deleted (e.g. Close Room / Cancel Room) — nothing to render
+  if(!room){clearSession();return;} // room was deleted (e.g. Close Room / Cancel Room, or TTL expiry) — nothing to render
   const players=room.players||{};
   const entries=Object.entries(players).sort((a,b)=>a[1].ts-b[1].ts);
   // Fix 2: safe name — use first 4 chars of pid if player.name is missing
@@ -1742,6 +1837,7 @@ function initGame(){
   document.getElementById('mp-banner').classList.toggle('visible',!!roomCode);
   const crBtn=document.getElementById('dd-closeroom');if(crBtn)crBtn.style.display=(roomCode&&roomIsHost)?'flex':'none';
   renderDiceRow();renderRollUI();renderSheet();showScreen('screen-game');document.getElementById('screen-game').scrollTo({top:0,behavior:'instant'});
+  requestWakeLock();
 }
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
 let _toastTimer=null;
@@ -1767,7 +1863,7 @@ document.getElementById('btn-solo-back').addEventListener('click',()=>{
   document.getElementById('solo-name-panel').style.display='none';
   document.getElementById('lobby-columns').style.display='grid';
 });
-document.getElementById('btn-start').addEventListener('click',()=>{const name=document.getElementById('inp-name-solo').value.trim();if(!name){showToast('Enter your name first!');return;}Audio.unlock();Audio.uiTick();Haptics.tick();playerName=name;localStorage.setItem('bazinco_name',name);resetRoomState();initGame();});
+document.getElementById('btn-start').addEventListener('click',()=>{const name=document.getElementById('inp-name-solo').value.trim();if(!name){showToast('Enter your name first!');return;}Audio.unlock();Audio.uiTick();Haptics.tick();playerName=name;localStorage.setItem('bazinco_name',name);resetRoomState();clearSession();initGame();});
 document.getElementById('inp-name-solo').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-start').click();});
 document.getElementById('btn-multiplayer').addEventListener('click',()=>{Audio.unlock();doJoinFromQR();});
 document.getElementById('inp-name-qr').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-multiplayer').click();});
@@ -1814,13 +1910,14 @@ document.getElementById('btn-quit').addEventListener('click',async()=>{
     else{await window.CloudRoom.roomLeave(roomCode,roomPlayerId);}
   }
   resetRoomState();
+  clearSession();releaseWakeLock();
   showCredits(()=>showScreen('screen-name'));
 });
 document.getElementById('btn-menu').addEventListener('click',e=>{e.stopPropagation();Audio.uiTick();Haptics.tick();const dd=document.getElementById('dropdown-menu');dd.classList.contains('open')?closeDropdown():openDropdown();});
 document.getElementById('dd-rules').addEventListener('click',e=>{e.stopPropagation();Audio.uiTick();closeDropdown();document.getElementById('screen-rules').classList.add('active');});
 document.getElementById('dd-scoreboard').addEventListener('click',e=>{e.stopPropagation();Audio.uiTick();closeDropdown();openScoreboard();});
 document.getElementById('dd-playagain').addEventListener('click',e=>{e.stopPropagation();Audio.uiTick();closeDropdown();setTimeout(()=>showCredits(()=>showScreen('screen-name')),300);});
-document.getElementById('dd-closeroom').addEventListener('click',e=>{e.stopPropagation();Audio.uiTick();closeDropdown();if(roomCode&&roomIsHost&&window.CloudRoom){if(confirm('Close the room and end the session for all players?')){window.CloudRoom.roomCleanup(roomCode).then(()=>{resetRoomState();showScreen('screen-name');});}}});
+document.getElementById('dd-closeroom').addEventListener('click',e=>{e.stopPropagation();Audio.uiTick();closeDropdown();if(roomCode&&roomIsHost&&window.CloudRoom){if(confirm('Close the room and end the session for all players?')){window.CloudRoom.roomCleanup(roomCode).then(()=>{resetRoomState();clearSession();releaseWakeLock();showScreen('screen-name');});}}});
 document.getElementById('btn-got-it').addEventListener('click',()=>{Audio.uiTick();document.getElementById('screen-rules').classList.remove('active');});
 document.getElementById('btn-sb-close').addEventListener('click',()=>{Audio.uiTick();closeScoreboard();});
 document.getElementById('btn-jmb-close').addEventListener('click',()=>{closeJumbotron();});
