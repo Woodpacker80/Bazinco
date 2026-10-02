@@ -447,7 +447,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 #screen-jumbotron{
   display:none;position:fixed;inset:0;z-index:200;background:#040c1a;
   grid-template-rows:56px 1fr 48px;
-  grid-template-columns:228px 1fr 300px;
+  grid-template-columns:228px 1fr 350px;
   grid-template-areas:"jh jh jh" "jl jc jr" "jf jf jf";
   overflow:hidden;font-family:'Nunito',sans-serif;
 }
@@ -455,13 +455,13 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 
 /* Header — Room code LEFT | BAZINCO! CENTRE | Exit RIGHT
    Left cell width = 228px (matches .jl column exactly)
-   Right cell width = 300px (matches .jr column exactly)
+   Right cell width = 350px (matches .jr column exactly)
    Centre = 1fr = remaining space with logo truly centred within it */
 .jh{
   grid-area:jh;background:#020810;
   border-bottom:2px solid var(--gold);
   display:grid;
-  grid-template-columns:228px 1fr 300px;
+  grid-template-columns:228px 1fr 350px;
   align-items:stretch;
   padding:0;
   box-shadow:0 2px 20px rgba(201,151,42,0.15);
@@ -480,22 +480,15 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
   white-space:nowrap;
 }
 .jh-exit{
-  display:flex;justify-content:flex-end;align-items:center;gap:8px;
+  display:flex;justify-content:flex-end;align-items:center;gap:12px;
   padding:0 16px;border-left:1px solid rgba(45,101,186,0.35);
 }
-.jh-close{
+.jh-close,.jh-fullscreen{
   background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);
   font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;padding:6px 12px;cursor:pointer;
   transition:border-color 0.2s,color 0.2s;white-space:nowrap;
 }
-.jh-close:hover{border-color:var(--gold);color:var(--gold2);}
-.jh-fullscreen{
-  background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);
-  font-size:15px;line-height:1;padding:6px 10px;cursor:pointer;
-  transition:border-color 0.2s,color 0.2s;
-}
-.jh-fullscreen:hover{border-color:var(--gold);color:var(--gold2);}
-.jh-fullscreen.is-full{transform:rotate(180deg);}
+.jh-close:hover,.jh-fullscreen:hover{border-color:var(--gold);color:var(--gold2);}
 
 /* Left — Standings only (room code moved to header) */
 .jl{
@@ -695,7 +688,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.22 Cobalt · Fullscreen Toggle</div>
+  <div class="version-tag">v 6.22.1 Cobalt · Fullscreen Label</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -709,7 +702,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     <div class="jh-logo">BAZINCO!</div>
     <div class="jh-exit">
       <button class="jh-close" id="btn-jmb-close">✕ EXIT GAME</button>
-      <button class="jh-fullscreen" id="btn-jmb-fullscreen" title="Fullscreen">⛶</button>
+      <button class="jh-fullscreen" id="btn-jmb-fullscreen">FULLSCREEN</button>
     </div>
   </div>
   <!-- Left column: Standings only -->
@@ -1450,8 +1443,7 @@ function toggleFullscreen(){
 function updateFullscreenBtn(){
   const btn=document.getElementById('btn-jmb-fullscreen');if(!btn)return;
   const isFull=!!(document.fullscreenElement||document.webkitFullscreenElement);
-  btn.classList.toggle('is-full',isFull);
-  btn.title=isFull?'Exit Fullscreen':'Fullscreen';
+  btn.textContent=isFull?'EXIT FULLSCREEN':'FULLSCREEN';
 }
 document.addEventListener('fullscreenchange',updateFullscreenBtn);
 document.addEventListener('webkitfullscreenchange',updateFullscreenBtn);
