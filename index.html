@@ -480,7 +480,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
   white-space:nowrap;
 }
 .jh-exit{
-  display:flex;justify-content:flex-end;align-items:center;
+  display:flex;justify-content:flex-end;align-items:center;gap:8px;
   padding:0 16px;border-left:1px solid rgba(45,101,186,0.35);
 }
 .jh-close{
@@ -489,6 +489,13 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
   transition:border-color 0.2s,color 0.2s;white-space:nowrap;
 }
 .jh-close:hover{border-color:var(--gold);color:var(--gold2);}
+.jh-fullscreen{
+  background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);
+  font-size:15px;line-height:1;padding:6px 10px;cursor:pointer;
+  transition:border-color 0.2s,color 0.2s;
+}
+.jh-fullscreen:hover{border-color:var(--gold);color:var(--gold2);}
+.jh-fullscreen.is-full{transform:rotate(180deg);}
 
 /* Left — Standings only (room code moved to header) */
 .jl{
@@ -688,7 +695,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.21.2 Cobalt · Mobile Stack Fix</div>
+  <div class="version-tag">v 6.22 Cobalt · Fullscreen Toggle</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -701,7 +708,8 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     </div>
     <div class="jh-logo">BAZINCO!</div>
     <div class="jh-exit">
-      <button class="jh-close" id="btn-jmb-close">✕ EXIT TV VIEW</button>
+      <button class="jh-close" id="btn-jmb-close">✕ EXIT GAME</button>
+      <button class="jh-fullscreen" id="btn-jmb-fullscreen" title="Fullscreen">⛶</button>
     </div>
   </div>
   <!-- Left column: Standings only -->
@@ -1428,6 +1436,26 @@ async function doStartGame(){if(!window.CloudRoom)return;Audio.uiTick();Haptics.
 async function leaveRoom(){Audio.uiTick();Haptics.tick();if(roomUnsub){roomUnsub();roomUnsub=null;}if(roomCode&&roomIsHost&&window.CloudRoom)await window.CloudRoom.roomCleanup(roomCode);resetRoomState();showScreen('screen-name');}
 function resetRoomState(){roomCode=null;roomPlayerId=null;roomIsHost=false;roomActivePid=null;roomPrevStatus=null;}
 
+// FULLSCREEN (game-screen only — toggled via the jumbotron header button)
+function toggleFullscreen(){
+  const el=document.documentElement;
+  if(!document.fullscreenElement&&!document.webkitFullscreenElement){
+    const req=el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen;
+    if(req)req.call(el);
+  }else{
+    const exit=document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen;
+    if(exit)exit.call(document);
+  }
+}
+function updateFullscreenBtn(){
+  const btn=document.getElementById('btn-jmb-fullscreen');if(!btn)return;
+  const isFull=!!(document.fullscreenElement||document.webkitFullscreenElement);
+  btn.classList.toggle('is-full',isFull);
+  btn.title=isFull?'Exit Fullscreen':'Fullscreen';
+}
+document.addEventListener('fullscreenchange',updateFullscreenBtn);
+document.addEventListener('webkitfullscreenchange',updateFullscreenBtn);
+
 // JUMBOTRON
 let jmbUnsub=null,jmbPrevStatus=null,jmbPrevRollTs=null,jmbPrevBazScore=0,jmbPrevActivePid=null;
 function jmbSetState(st){['entry','waiting','playing','done'].forEach(s=>{const el=document.getElementById('jmb-st-'+s);if(el)el.classList.toggle('vis',s===st);});}
@@ -1804,6 +1832,7 @@ document.getElementById('dd-closeroom').addEventListener('click',e=>{e.stopPropa
 document.getElementById('btn-got-it').addEventListener('click',()=>{Audio.uiTick();document.getElementById('screen-rules').classList.remove('active');});
 document.getElementById('btn-sb-close').addEventListener('click',()=>{Audio.uiTick();closeScoreboard();});
 document.getElementById('btn-jmb-close').addEventListener('click',()=>{closeJumbotron();});
+document.getElementById('btn-jmb-fullscreen').addEventListener('click',()=>{Audio.uiTick();Haptics.tick();toggleFullscreen();});
 document.getElementById('btn-jmb-connect').addEventListener('click',()=>{jmbConnect();});
 document.getElementById('jmb-code-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-jmb-connect').click();});
 document.addEventListener('click',e=>{const dd=document.getElementById('dropdown-menu');const btn=document.getElementById('btn-menu');if(!dd||!btn)return;if(!dd.contains(e.target)&&!btn.contains(e.target))closeDropdown();});
