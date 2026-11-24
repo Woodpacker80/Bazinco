@@ -696,7 +696,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.24 Cobalt · Bazinco 25/50</div>
+  <div class="version-tag">v 6.25 Cobalt · Bazinco 25 each</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -872,7 +872,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <div class="rules-row"><div class="rules-row-name">Full House</div><div class="rules-row-desc">Three of one, two of another</div><div class="rules-row-pts">25 pts</div></div>
       <div class="rules-row"><div class="rules-row-name">Small Straight</div><div class="rules-row-desc">Any 4 in sequence</div><div class="rules-row-pts">30 pts</div></div>
       <div class="rules-row"><div class="rules-row-name">Large Straight</div><div class="rules-row-desc">All 5 in sequence</div><div class="rules-row-pts">40 pts</div></div>
-      <div class="rules-row"><div class="rules-row-name" style="color:var(--gold2)">Bazinco! ⚡</div><div class="rules-row-desc">All 5 same — <strong style="color:var(--gold2)">auto jackpot!</strong> First: 25 pts. Each extra: +50 pts. Free action!</div><div class="rules-row-pts" style="color:var(--gold2)">Auto!</div></div>
+      <div class="rules-row"><div class="rules-row-name" style="color:var(--gold2)">Bazinco! ⚡</div><div class="rules-row-desc">All 5 same — <strong style="color:var(--gold2)">auto jackpot!</strong> Each Bazinco: 25 pts. Free action!</div><div class="rules-row-pts" style="color:var(--gold2)">Auto!</div></div>
       <div class="rules-row"><div class="rules-row-name">Chance</div><div class="rules-row-desc">Any combination</div><div class="rules-row-pts">Sum all</div></div>
     </div>
     <p class="rules-tip">🎲 <strong>Bazinco!</strong> fires the moment dice land — your turn continues normally!</p>
@@ -1095,10 +1095,10 @@ function clearTrayDice(){document.getElementById('tray-dice').innerHTML='';}
 function checkAutoBazinco(){
   if(calcScore('bazinco',dice)!==50)return;
   hasRolled=false;document.getElementById('btn-roll').disabled=true;
-  // Payout: first Bazinco 25 pts, every later one +50 pts (was 50 / +100 before v6.24).
+  // Payout (v6.25): every Bazinco is worth 25 pts. Total after n hits = 25*n.
   // Total after n hits = 25 + 50*(n-1) — the hit-count formulas elsewhere depend on that.
   if(bazCount===0){bazPts+=25;bazCount++;scores['bazinco']=25;Audio.bazincoFanfare();Haptics.jackpot();showToast('BAZINCO! 25 pts!',2500);}
-  else{bazPts+=50;bazCount++;Audio.bazincoBonus();Haptics.bonus();showToast('BAZINCO BONUS! ⚡ +50 pts!',2500);}
+  else{bazPts+=25;bazCount++;Audio.bazincoBonus();Haptics.bonus();showToast('BAZINCO BONUS! ⚡ +25 pts!',2500);}
   triggerJackpotFlash();renderSheet();
   const done=[...UPPER,...LOWER].filter(c=>!c.isBaz).every(c=>scores[c.id]!==undefined);
   setTimeout(()=>{
@@ -1300,7 +1300,7 @@ async function tryResumeSession(){
       initGame();
       scores={...saved};delete scores.bazinco_pts;
       bazPts=Number(saved.bazinco_pts||0);
-      bazCount=bazPts>=25?Math.round((bazPts-25)/50)+1:0;
+      bazCount=bazPts>=25?Math.round(bazPts/25):0;
       renderSheet();
       const ds=room.diceState;
       if(ds&&ds.pid===roomPlayerId&&Array.isArray(ds.dice)){
@@ -1810,7 +1810,7 @@ function jmbRenderSpotlight(pid,player,safeName){
   // Bazinco row — spans both columns (grid-column:1/-1), looks like a category row
   const bazRaw=cs['bazinco_pts'];
   const bazVal=(bazRaw!==undefined&&bazRaw!==null&&Number(bazRaw)>0)?Number(bazRaw):0;
-  const bazHits=bazVal>=25?Math.round((bazVal-25)/50)+1:0;
+  const bazHits=bazVal>=25?Math.round(bazVal/25):0;
   const bazRow=document.createElement('div');
   bazRow.className='j-cat-row '+(bazVal>0?'cat-scored':'cat-pending');
   bazRow.style.gridColumn='1/-1';// span full width in the 2-col grid
