@@ -144,7 +144,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.14</p>
+  <p class="sub">Table Mode · play with the GoDice on the tray · v0.15</p>
   <div class="cols">
    <div class="box">
     <h2>1 · Players</h2>
@@ -380,10 +380,7 @@ function finishBatch(){
     const nRolled=rolled.filter(Boolean).length;
     const unknown=slots.findIndex(x=>!(x.value>0));
     if(unknown>=0){toast('Die '+(unknown+1)+' has not shown a number yet. Roll it.',3200);renderHeader();return;}
-    if(nRolled<3){
-      const still=slots.map((x,i)=>rolled[i]?null:'Die '+(i+1)).filter(Boolean).join(', ');
-      toast('Roll all five dice to start your turn ('+still+' did not move)',3400);renderHeader();return;
-    }
+    if(nRolled<3){renderHeader();return;}   // not a full throw yet: stay quiet, the header already says "Roll all five dice"
     slots.forEach((x,i)=>{S.dice[i]=x.value;S.held[i]=false;});
   }else{
     slots.forEach((x,i)=>{if(rolled[i])S.dice[i]=x.value;S.held[i]=!rolled[i];});
