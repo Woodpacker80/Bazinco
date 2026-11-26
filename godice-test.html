@@ -52,7 +52,7 @@ button:disabled{opacity:.45}
 
 <div class="bar"><button class="alt" id="btn-clear">Clear log</button></div>
 <div id="log"></div>
-<p class="note">Only the number from a die that has come to rest counts. Tilt, move and fake-stable messages are logged but ignored. A die you leave untouched is shown as held.</p>
+<p class="note">Only the number from a die that has come to rest counts. Fake-stable and move-stable also count as a die at rest. A tilted die keeps its old number. A die you leave untouched is shown as held.</p>
 
 <script src="godice.js"></script>
 <script>
@@ -82,7 +82,7 @@ function render(){
     d.className='slot'+(s?(s.connected?(s.rolling?' rolling':' on'):' off'):'');
     if(!s){d.innerHTML='<div class="n">Die '+(i+1)+'</div><div class="v">·</div><div class="s">not connected</div>';}
     else{
-      const status=!s.connected?'disconnected':s.rolling?'rolling…':(s.held?'held (untouched)':'at rest');
+      const status=!s.connected?'disconnected':s.rolling?'rolling…':(s.held?'held (untouched)':(s.endKind?'at rest ('+s.endKind+')':'at rest'));
       const bat=(s.battery!=null)?' · '+s.battery+'%':'';
       d.innerHTML='<div class="n">Die '+(i+1)+bat+'</div><div class="v">'+(s.value||'–')+'</div><div class="s">'+status+'</div>';
     }
@@ -116,19 +116,30 @@ function finishBatch(){
 function wire(die){
   die.onRollStart=function(id){
     const s=slotByDeviceId(id);if(!s||s.die!==die)return;
-    s.rolling=true;s.rolledThisBatch=true;s.held=false;
+    s.rolling=true;s.rolledThisBatch=true;s.held=false;s.endKind='';
     startBatch();
     log('Die '+(slots.indexOf(s)+1)+': roll start');render();
   };
   die.onStable=function(id,value){
     const s=slotByDeviceId(id);if(!s||s.die!==die)return;
-    s.value=value;s.rolling=false;
+    s.value=value;s.rolling=false;s.endKind='';
     if(!s.rolledThisBatch){s.rolledThisBatch=true;startBatch();} // stable without a start message still counts as a roll
     log('Die '+(slots.indexOf(s)+1)+': STABLE '+value);render();maybeFinishBatch();
   };
-  die.onFakeStable=function(id,value){const s=slotByDeviceId(id);log('Die '+(s?slots.indexOf(s)+1:'?')+': fake-stable '+value+' (ignored)');};
-  die.onTiltStable=function(id,xyz,value){const s=slotByDeviceId(id);log('Die '+(s?slots.indexOf(s)+1:'?')+': tilt-stable '+value+' (ignored)');};
-  die.onMoveStable=function(id,value){const s=slotByDeviceId(id);log('Die '+(s?slots.indexOf(s)+1:'?')+': move-stable '+value+' (ignored)');};
+  function restOther(kind,adopt){
+    return function(id,a,b){
+      const s=slotByDeviceId(id);if(!s||s.die!==die)return;
+      const value=(kind==='tilt')?b:a;
+      if(adopt&&value>0)s.value=value;
+      s.rolling=false;s.endKind=kind;
+      if(!s.rolledThisBatch){s.rolledThisBatch=true;startBatch();}
+      log('Die '+(slots.indexOf(s)+1)+': '+kind+'-stable '+value+(adopt?' (used)':' (number not used)'));
+      render();maybeFinishBatch();
+    };
+  }
+  die.onFakeStable=restOther('fake',true);
+  die.onTiltStable=restOther('tilt',false);
+  die.onMoveStable=restOther('move',true);
   die.onBatteryLevel=function(id,level){const s=slotByDeviceId(id);if(s&&s.die===die){s.battery=level;render();}};
   die.onDiceDisconnected=function(id){
     const s=slotByDeviceId(id);if(!s||s.die!==die)return;
