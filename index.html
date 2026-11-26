@@ -685,6 +685,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
         <button class="btn-primary" id="btn-how-to-play">📖 HOW TO PLAY &amp; SETUP</button>
         <button class="btn-secondary" id="btn-multiplayer-menu">👥 MULTIPLAYER</button>
         <button class="btn-secondary" id="btn-solo-open">🎲 PRACTICE SOLO</button>
+        <button class="btn-secondary" id="btn-go-dice">GO DICE</button>
       </div>
     </div>
 
@@ -696,7 +697,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.25 Cobalt · Bazinco 25 each</div>
+  <div class="version-tag">v 6.26 Cobalt · Go Dice button</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -1854,6 +1855,7 @@ function closeDropdown(){document.getElementById('dropdown-menu').classList.remo
 
 // EVENT LISTENERS
 document.getElementById('btn-how-to-play').addEventListener('click',()=>{Audio.uiTick();document.getElementById('screen-rules').classList.add('active');});
+document.getElementById('btn-go-dice').addEventListener('click',()=>{window.location.href='table.html';});
 document.getElementById('btn-solo-open').addEventListener('click',()=>{
   Audio.uiTick();Haptics.tick();
   document.getElementById('lobby-columns').style.display='none';
