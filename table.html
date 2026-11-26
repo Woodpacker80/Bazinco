@@ -144,7 +144,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.13</p>
+  <p class="sub">Table Mode · play with the GoDice on the tray · v0.14</p>
   <div class="cols">
    <div class="box">
     <h2>1 · Players</h2>
@@ -196,7 +196,7 @@ button:disabled{opacity:.4}
 <script>
 (function(){
 'use strict';
-const NDICE=5, SETTLE_MS=700, SETTLE_LONG=2600, LONG_TUMBLE=2000, ROLLS=3, MAXP=6;
+const NDICE=5, SETTLE_MS=700, SETTLE_LONG=2600, LONG_TUMBLE=2000, END_IDLE_MS=45000, ROLLS=3, MAXP=6;
 const UPPER=[['ones','Ones'],['twos','Twos'],['threes','Threes'],['fours','Fours'],['fives','Fives'],['sixes','Sixes']];
 const LOWER=[['threeKind','Three of a Kind'],['fourKind','Four of a Kind'],['fullHouse','Full House'],['smStraight','Small Straight'],['lgStraight','Large Straight'],['chance','Chance']];
 const ALLCATS=[...UPPER,...LOWER].map(c=>c[0]);
@@ -228,7 +228,7 @@ const slots=[];                 // connected GoDice
 let phase='setup';
 let setupPlayers=[], setupGames=1;
 let S=null;                     // game state
-let batchTimer=null, batchActive=false;
+let batchTimer=null, batchActive=false, endTimer=null;
 
 function newGame(names,games){
   return{
@@ -436,7 +436,15 @@ function endSeries(){
   const ov=$('ov');
   ov.innerHTML='<div class="card"><h1>'+esc(st[0].p.name)+' wins!</h1><table>'+st.map((r,k)=>'<tr><td>'+(k+1)+'. '+esc(r.p.name)+'</td><td class="n">'+r.t+'</td></tr>').join('')+'</table><button id="again" style="font-size:20px;padding:12px 30px">Play again</button></div>';
   ov.classList.add('on');victoryFanfare();confetti();
-  $('again').onclick=function(){ov.classList.remove('on');phase='setup';S=null;showCredits(function(){show('screen-setup');renderSetup();});};
+  let gone=false;
+  function goCredits(){
+    if(gone)return;gone=true;clearTimeout(endTimer);
+    ov.classList.remove('on');phase='setup';S=null;
+    showCredits(function(){show('screen-setup');renderSetup();});
+  }
+  $('again').onclick=goCredits;
+  // if nobody presses Play again, roll the credits by themselves
+  endTimer=setTimeout(goCredits,END_IDLE_MS);
 }
 
 
