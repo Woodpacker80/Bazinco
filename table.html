@@ -116,7 +116,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.9</p>
+  <p class="sub">Table Mode · play with the GoDice on the tray · v0.12</p>
   <div class="cols">
    <div class="box">
     <h2>1 · Players</h2>
@@ -157,7 +157,7 @@ button:disabled{opacity:.4}
 <script>
 (function(){
 'use strict';
-const NDICE=5, SETTLE_MS=700, ROLLS=3, MAXP=6;
+const NDICE=5, SETTLE_MS=700, SETTLE_LONG=2600, LONG_TUMBLE=2000, ROLLS=3, MAXP=6;
 const UPPER=[['ones','Ones'],['twos','Twos'],['threes','Threes'],['fours','Fours'],['fives','Fives'],['sixes','Sixes']];
 const LOWER=[['threeKind','Three of a Kind'],['fourKind','Four of a Kind'],['fullHouse','Full House'],['smStraight','Small Straight'],['lgStraight','Large Straight'],['chance','Chance']];
 const ALLCATS=[...UPPER,...LOWER].map(c=>c[0]);
@@ -268,7 +268,7 @@ function slotOf(die){return slots.find(s=>s.die===die);}
 function wire(die){
   die.onRollStart=function(id){
     const s=slotOf(die);if(!s)return;
-    s.rolling=true;s.rolledThisBatch=true;
+    s.rolling=true;s.rolledThisBatch=true;s.lastStart=Date.now();
     batchActive=true;clearTimeout(batchTimer);
     const i=slots.indexOf(s);if(phase==='setup')renderSetup();
     if(phase==='play'&&S){S.held[i]=false;renderHeader();}
@@ -297,7 +297,7 @@ function wire(die){
 function gotRest(die,value,trust){
   const s=slotOf(die);if(!s)return;
   if(trust&&Number(value)>0)s.value=Number(value);   // the SDK may hand us the number as text
-  s.rolling=false;s.tilted=!trust;
+  s.rolling=false;s.tilted=!trust;s.dur=s.lastStart?Date.now()-s.lastStart:0;s.lastStart=0;
   if(!s.rolledThisBatch){s.rolledThisBatch=true;batchActive=true;}
   if(phase==='play'&&S)renderHeader();
   if(phase==='setup')renderSetup();
@@ -315,7 +315,12 @@ $('dconn').onclick=function(){
 function maybeFinish(){
   if(!batchActive)return;
   if(slots.some(s=>s.connected&&s.rolling))return;
-  clearTimeout(batchTimer);batchTimer=setTimeout(finishBatch,SETTLE_MS);
+  // A real throw tumbles for a couple of seconds, so count it quickly. A short movement (for example
+  // putting dice into the cup) is probably not the throw yet, so wait longer for the real throw to follow.
+  const rs=slots.filter(x=>x.rolledThisBatch);
+  const longOnes=rs.filter(x=>x.dur>=LONG_TUMBLE).length;
+  const throwLike=rs.length>0&&longOnes>=Math.ceil(rs.length/2);
+  clearTimeout(batchTimer);batchTimer=setTimeout(finishBatch,throwLike?SETTLE_MS:SETTLE_LONG);
 }
 function clearFlags(){slots.forEach(s=>{s.rolledThisBatch=false;});}
 function clearTurn(){if(!S)return;S.rolls=0;S.dice=Array(NDICE).fill(0);S.held=Array(NDICE).fill(false);S.sel=null;clearFlags();batchActive=false;}
@@ -428,7 +433,7 @@ function renderHeader(){
 
 function colsTpl(nameW){
   let t=nameW+'px';
-  for(let g=0;g<S.games;g++)t+=g===S.cur?' minmax(64px,1.5fr)':' minmax(42px,1fr)';
+  for(let g=0;g<S.games;g++)t+=(g===S.cur&&S.games<2)?' minmax(64px,1.5fr)':' minmax(42px,1fr)';   // 3 or 6 games: all game columns equal
   return t;
 }
 function cell(cls,html){return '<div class="cell '+cls+'">'+html+'</div>';}
