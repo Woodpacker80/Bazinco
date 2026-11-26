@@ -323,11 +323,20 @@ function finishBatch(){
   }
   const tl=slots.findIndex((x,i)=>rolled[i]&&x.tilted);
   if(tl>=0){toast('Die '+(tl+1)+' is not lying flat. Straighten it.',2800);renderHeader();return;}
-  if(S.rolls===0&&!rolled.every(Boolean)){
-    // first roll of a turn needs all five dice thrown; keep the flags and wait
-    toast('Roll all five dice to start your turn',2600);renderHeader();return;
+  if(S.rolls===0){
+    // First roll of a turn: the dice are thrown together. Accept it when at least 3 dice moved
+    // and every die has a known number; unmoved dice simply keep the number they show.
+    const nRolled=rolled.filter(Boolean).length;
+    const unknown=slots.findIndex(x=>!(x.value>0));
+    if(unknown>=0){toast('Die '+(unknown+1)+' has not shown a number yet. Roll it.',3200);renderHeader();return;}
+    if(nRolled<3){
+      const still=slots.map((x,i)=>rolled[i]?null:'Die '+(i+1)).filter(Boolean).join(', ');
+      toast('Roll all five dice to start your turn ('+still+' did not move)',3400);renderHeader();return;
+    }
+    slots.forEach((x,i)=>{S.dice[i]=x.value;S.held[i]=false;});
+  }else{
+    slots.forEach((x,i)=>{if(rolled[i])S.dice[i]=x.value;S.held[i]=!rolled[i];});
   }
-  slots.forEach((s,i)=>{if(rolled[i])S.dice[i]=s.value;S.held[i]=!rolled[i];});
   S.rolls++;S.sel=null;clearFlags();
   if(isBazinco(S.dice)){bazinco();return;}
   slots.forEach((s,i)=>{if(S.rolls<ROLLS&&S.held[i])ledGreen(i);else ledOff(i);});
