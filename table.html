@@ -76,7 +76,7 @@ button:disabled{opacity:.4}
 .row.h{flex:0 0 22px}
 .row.t{flex:0 0 28px}
 .cell{display:flex;align-items:center;justify-content:center;background:#fff;border-radius:7px;font-weight:700;font-size:16px;min-width:0}
-.cell.nm{justify-content:flex-start;padding-left:8px;font-size:17px;font-weight:800;white-space:nowrap;overflow:hidden}
+.cell.nm{justify-content:flex-start;padding-left:8px;font-size:16px;font-weight:800;white-space:nowrap;overflow:hidden}
 .h .cell{background:transparent;font-size:12px;color:var(--mute);text-transform:uppercase}
 .h .cell.cur{color:var(--ink);font-weight:900}
 .t .cell{background:#e4eef8;font-size:14px}
@@ -116,7 +116,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.8</p>
+  <p class="sub">Table Mode · play with the GoDice on the tray · v0.9</p>
   <div class="cols">
    <div class="box">
     <h2>1 · Players</h2>
@@ -426,9 +426,9 @@ function renderHeader(){
   const cx=$('cxb');if(cx)cx.onclick=function(){S.sel=null;renderGame();};
 }
 
-function colsTpl(){
-  let t='152px';
-  for(let g=0;g<S.games;g++)t+=g===S.cur?' minmax(84px,2.1fr)':' minmax(40px,1fr)';
+function colsTpl(nameW){
+  let t=nameW+'px';
+  for(let g=0;g<S.games;g++)t+=g===S.cur?' minmax(64px,1.5fr)':' minmax(42px,1fr)';
   return t;
 }
 function cell(cls,html){return '<div class="cell '+cls+'">'+html+'</div>';}
@@ -460,15 +460,15 @@ function totalRow(label,fn){
 }
 function renderSections(){
   const p=S.players[S.turn];
-  const cols=colsTpl();
-  let u='<div class="sec" style="--cols:'+cols+'">'+headRow()+UPPER.map(c=>catRow(c[0])).join('')
+  const colsU=colsTpl(104),colsL=colsTpl(146);
+  let u='<div class="sec" style="--cols:'+colsU+'">'+headRow()+UPPER.map(c=>catRow(c[0])).join('')
     +totalRow('Ones–Sixes',(pl,g)=>'<b>'+upSum(pl,g)+'</b>&nbsp;/ 63')
     +totalRow('Bonus',(pl,g)=>bonus(pl,g)?'35':'–')
     +totalRow('Upper total',(pl,g)=>upSum(pl,g)+bonus(pl,g))+'</div>';
   let bz='<div class="row baz">'+cell('nm','Bazinco ⚡');
   for(let g=0;g<S.games;g++)bz+=cell(g===S.cur?'cur':'',p.baz[g]?p.baz[g]+'<small>×'+p.bn[g]+'</small>':'');
   bz+='</div>';
-  let l='<div class="sec" style="--cols:'+cols+'">'+headRow()+LOWER.map(c=>catRow(c[0])).join('')+bz
+  let l='<div class="sec" style="--cols:'+colsL+'">'+headRow()+LOWER.map(c=>catRow(c[0])).join('')+bz
     +totalRow('Lower total',(pl,g)=>lowSum(pl,g))+'</div>';
   const el=$('sections');el.innerHTML=u+l;
   el.querySelectorAll('.row.open').forEach(r=>r.onclick=()=>tapCat(r.dataset.cat));
