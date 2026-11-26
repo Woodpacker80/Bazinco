@@ -111,7 +111,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.4</p>
+  <p class="sub">Table Mode · play with the GoDice on the tray · v0.6</p>
   <div class="cols">
    <div class="box">
     <h2>1 · Players</h2>
@@ -250,7 +250,7 @@ $('pname').addEventListener('keydown',e=>{if(e.key==='Enter')addPlayer();});
 document.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{setupGames=+b.dataset.g;renderSetup();});
 $('start').onclick=function(){
   S=newGame(setupPlayers,setupGames);phase='play';wakeOn();
-  clearTurn();show('screen-game');renderGame();allOff();
+  clearTurn();show('screen-game');renderGame();
 };
 
 /* ---------- dice connection ---------- */
@@ -265,7 +265,7 @@ function wire(die){
     const s=slotOf(die);if(!s)return;
     s.rolling=true;s.rolledThisBatch=true;
     batchActive=true;clearTimeout(batchTimer);
-    const i=slots.indexOf(s);ledOff(i);if(phase==='setup')renderSetup();
+    const i=slots.indexOf(s);if(phase==='setup')renderSetup();
     if(phase==='play'&&S){S.held[i]=false;renderHeader();}
   };
   die.onStable=function(id,value){gotRest(die,value,true);};
@@ -285,7 +285,6 @@ function wire(die){
     const s={die:inst,id:id,connected:true,rolling:false,rolledThisBatch:false,value:0,battery:null,qt:0};
     slots.push(s);
     try{inst.getBatteryLevel();}catch(e){}
-    led(slots.length-1,d=>d.pulseLed(2,20,20,[120,180,255]));
     renderSetup();
   };
 }
@@ -321,7 +320,7 @@ function finishBatch(){
   if(!live){clearFlags();return;}
   const rolled=slots.map(s=>s.rolledThisBatch);
   if(S.rolls>=ROLLS){
-    clearFlags();allOff();toast('That was your last roll. Choose a category.',2600);return;
+    clearFlags();toast('That was your last roll. Choose a category.',2600);return;
   }
   const tl=slots.findIndex((x,i)=>rolled[i]&&x.tilted);
   if(tl>=0){toast('Die '+(tl+1)+' is not lying flat. Straighten it.',2800);renderHeader();return;}
@@ -341,7 +340,6 @@ function finishBatch(){
   }
   S.rolls++;S.sel=null;clearFlags();
   if(isBazinco(S.dice)){bazinco();return;}
-  slots.forEach((s,i)=>{if(S.rolls<ROLLS&&S.held[i])ledGreen(i);else ledOff(i);});
   renderGame();
 }
 function bazinco(){
@@ -360,14 +358,12 @@ function tapCat(id){
   const p=S.players[S.turn];
   if(S.rolls<1){toast('Roll the dice first');return;}
   if(p.sc[S.cur][id]!==undefined)return;
-  if(S.sel===id){confirmCat();return;}
-  S.sel=id;renderGame();
+  S.sel=id;confirmCat();   // single tap scores the category
 }
 function confirmCat(){
   const p=S.players[S.turn],id=S.sel;
   if(!id||S.rolls<1)return;
   p.sc[S.cur][id]=calcScore(id,S.dice);
-  allOff();
   if(gameDone(S.cur)){
     if(S.cur===S.games-1){endSeries();return;}
     gameBreak();return;
