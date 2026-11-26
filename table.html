@@ -232,7 +232,7 @@ function renderSetup(){
   $('dconn').textContent='Connect GoDice ('+nc+' / '+NDICE+')';
   $('dconn').disabled=slots.length>=NDICE&&nc===slots.length;
   const ch=$('dchips');ch.innerHTML='';
-  for(let i=0;i<NDICE;i++){const s=slots[i];const d=document.createElement('div');d.className='chip'+(s&&s.connected?' on':'');d.innerHTML='Die '+(i+1)+'<br>'+(s&&s.battery!=null?s.battery+'%':'–');ch.appendChild(d);}
+  for(let i=0;i<NDICE;i++){const s=slots[i];const d=document.createElement('div');d.className='chip'+(s&&s.connected?' on':'');d.innerHTML='Die '+(i+1)+'<br>'+(s&&s.battery!=null?s.battery+'%':'–')+'<br><b style="font-size:22px">'+(s&&s.value?s.value:'–')+'</b>';ch.appendChild(d);}
   const ok=setupPlayers.length>=1&&nc===NDICE;
   $('start').disabled=!ok;
   $('startmsg').textContent=ok?'':(setupPlayers.length<1?'Add at least one player. ':'')+(nc<NDICE?'Connect all five dice.':'');
@@ -264,7 +264,7 @@ function wire(die){
     const s=slotOf(die);if(!s)return;
     s.rolling=true;s.rolledThisBatch=true;
     batchActive=true;clearTimeout(batchTimer);
-    const i=slots.indexOf(s);ledOff(i);
+    const i=slots.indexOf(s);ledOff(i);if(phase==='setup')renderSetup();
     if(phase==='play'&&S){S.held[i]=false;renderHeader();}
   };
   die.onStable=function(id,value){gotRest(die,value,true);};
@@ -294,6 +294,7 @@ function gotRest(die,value,trust){
   s.rolling=false;s.tilted=!trust;
   if(!s.rolledThisBatch){s.rolledThisBatch=true;batchActive=true;}
   if(phase==='play'&&S)renderHeader();
+  if(phase==='setup')renderSetup();
   maybeFinish();
 }
 $('dconn').onclick=function(){
