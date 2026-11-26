@@ -9,7 +9,7 @@
 <style>
 :root{
   --bg:#d3e4f4;--panel:#eef6fd;--ink:#0f1c2b;--mute:#4a5b6e;--line:#aac3da;
-  --open:#c9ecd7;--openline:#2f9e5b;--taken:#c8ced5;--sel:#0f1c2b;
+  --open:#c9ecd7;--openline:#2f9e5b;--taken:#c8ced5;--takenline:#8a949f;--sel:#0f1c2b;
   --gold:#ffe08a;--goldline:#c99700;--btn:#1f4f82;--bad:#b3261e;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -84,7 +84,7 @@ button:disabled{opacity:.4}
 .t .cell.nm{font-size:13px}
 .row.open .cell.nm,.row.open .cell.cur{background:var(--open);border:2px solid var(--openline)}
 .row.open{cursor:pointer}
-.row.taken .cell.nm,.row.taken .cell.cur{background:var(--taken)}
+.row.taken .cell.nm,.row.taken .cell.cur{background:var(--taken);border:2px solid var(--takenline)}
 .row.sel{outline:4px solid var(--sel);outline-offset:1px;border-radius:8px}
 .row.baz .cell{background:var(--gold);border:2px solid var(--goldline)}
 .pv{color:#1a6b3d;font-size:20px;font-weight:800}
@@ -145,7 +145,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.16</p>
+  <p class="sub">Table Mode · play with the GoDice on the tray · v0.17</p>
   <div class="box" id="resume" style="display:none;margin-bottom:12px"></div>
   <div class="cols">
    <div class="box">
