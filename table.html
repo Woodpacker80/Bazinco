@@ -111,7 +111,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.3</p>
+  <p class="sub">Table Mode · play with the GoDice on the tray · v0.4</p>
   <div class="cols">
    <div class="box">
     <h2>1 · Players</h2>
@@ -163,6 +163,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 /* ---------- scoring (same rules as the phone game) ---------- */
 function calcScore(id,d){
+  d=d.map(Number);
   const cnt=Array(7).fill(0);d.forEach(v=>cnt[v]++);const sum=d.reduce((a,b)=>a+b,0);
   switch(id){
     case 'ones':return cnt[1];case 'twos':return cnt[2]*2;case 'threes':return cnt[3]*3;
@@ -290,7 +291,7 @@ function wire(die){
 }
 function gotRest(die,value,trust){
   const s=slotOf(die);if(!s)return;
-  if(trust&&value>0)s.value=value;
+  if(trust&&Number(value)>0)s.value=Number(value);   // the SDK may hand us the number as text
   s.rolling=false;s.tilted=!trust;
   if(!s.rolledThisBatch){s.rolledThisBatch=true;batchActive=true;}
   if(phase==='play'&&S)renderHeader();
