@@ -699,7 +699,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.30 Cobalt · Text column</div>
+  <div class="version-tag">v 6.31 Cobalt · Shared rules</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -924,7 +924,9 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 
 <div class="toast" id="toast"></div>
 <div class="jackpot-overlay" id="jackpot-overlay"></div>
+<script src="rules.js"></script>
 <script>
+if(typeof BazRules==="undefined"){document.addEventListener("DOMContentLoaded",function(){var d=document.createElement("div");d.style.cssText="position:fixed;top:0;left:0;right:0;z-index:99999;background:#b3261e;color:#fff;font:700 16px system-ui;padding:12px;text-align:center";d.textContent="rules.js was not found. Upload rules.js next to index.html.";document.body.appendChild(d);});}
 // DIAGNOSTIC SAFETY NET — catches any uncaught JS error and shows it directly on
 // screen as a red banner, no dev tools needed. Harmless when nothing goes wrong.
 window.addEventListener('error', function(e){
@@ -992,10 +994,7 @@ let playerName='',dice=[0,0,0,0,0],held=[false,false,false,false,false];
 let rollsLeft=3,hasRolled=false,scores={},bazCount=0,bazPts=0,turnNum=1,animating=false,hasSavedScore=false;
 const SCATTER=[{x:60,y:80,r:-25},{x:155,y:55,r:15},{x:220,y:85,r:-10},{x:185,y:170,r:20},{x:80,y:175,r:-15}];
 
-function calcScore(id,d){
-  const cnt=Array(7).fill(0);d.forEach(v=>cnt[v]++);const sum=d.reduce((a,b)=>a+b,0);
-  switch(id){case 'ones':return cnt[1];case 'twos':return cnt[2]*2;case 'threes':return cnt[3]*3;case 'fours':return cnt[4]*4;case 'fives':return cnt[5]*5;case 'sixes':return cnt[6]*6;case 'threeKind':return cnt.some(c=>c>=3)?sum:0;case 'fourKind':return cnt.some(c=>c>=4)?sum:0;case 'fullHouse':return(cnt.some(c=>c===3)&&cnt.some(c=>c===2))?25:0;case 'smStraight':{const u=[...new Set(d)].sort((a,b)=>a-b).join('');return(u.includes('1234')||u.includes('2345')||u.includes('3456'))?30:0;}case 'lgStraight':{const u=[...new Set(d)].sort((a,b)=>a-b).join('');return(u==='12345'||u==='23456')?40:0;}case 'bazinco':return cnt.some(c=>c===5)?50:0;case 'chance':return sum;default:return 0;}
-}
+const calcScore=BazRules.calcScore;   // scoring rules live in rules.js
 function upperSum(){return UPPER.reduce((t,c)=>t+(scores[c.id]??0),0);}
 function grandTotal(){let t=UPPER.reduce((s,c)=>s+(scores[c.id]??0),0)+LOWER.filter(c=>!c.isBaz).reduce((s,c)=>s+(scores[c.id]??0),0);if(upperSum()>=63)t+=35;return t+bazPts;}
 
@@ -1096,7 +1095,7 @@ function showScatteredDice(){
 function clearTrayDice(){document.getElementById('tray-dice').innerHTML='';}
 
 function checkAutoBazinco(){
-  if(calcScore('bazinco',dice)!==50)return;
+  if(!BazRules.isBazinco(dice))return;
   hasRolled=false;document.getElementById('btn-roll').disabled=true;
   // Payout (v6.25): every Bazinco is worth 25 pts. Total after n hits = 25*n.
   // Total after n hits = 25 + 50*(n-1) — the hit-count formulas elsewhere depend on that.
