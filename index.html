@@ -277,6 +277,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .rules-header-title{font-family:'Cinzel',serif;font-size:16px;font-weight:700;color:var(--gold2);letter-spacing:2px;}
 .rules-body{flex:1;overflow-y:auto;padding:20px 16px 0;}
 .rules-section-title{font-family:'Cinzel',serif;font-size:12px;font-weight:700;color:var(--gold2);letter-spacing:3px;text-transform:uppercase;margin:0 0 10px;}
+.lobby-note{font-size:11px;letter-spacing:1px;color:var(--text2);text-align:center;margin-top:-4px;opacity:.85;}
 .rules-intro{font-size:13px;color:#ffffff;line-height:1.6;margin-bottom:20px;}
 .rules-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:8px;}
 .rules-row{display:flex;align-items:flex-start;padding:11px 14px;border-bottom:1px solid rgba(45,101,186,0.35);gap:12px;}
@@ -688,6 +689,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
         <button class="btn-secondary has-ic" id="btn-multiplayer-menu"><span class="bi">👥</span>MULTIPLAYER</button>
         <button class="btn-secondary has-ic" id="btn-solo-open"><span class="bi">👤</span>PRACTICE SOLO</button>
         <button class="btn-secondary has-ic" id="btn-go-dice"><span class="bi">🎲</span>GO DICE GAME</button>
+        <div class="lobby-note">(only with Bluetooth GoDice)</div>
       </div>
     </div>
 
@@ -699,7 +701,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.31 Cobalt · Shared rules</div>
+  <div class="version-tag">v 6.32 Cobalt · Go Dice help</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -861,6 +863,14 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <div class="rules-row"><div class="rules-row-name">2. Players Join</div><div class="rules-row-desc">Each other player taps <strong>Multiplayer</strong>, enters the room code and their name, and joins the lobby.</div></div>
       <div class="rules-row"><div class="rules-row-name">3. Add the Jumbotron</div><div class="rules-row-desc">On a Smart TV or tablet, tap <strong>TV View — Jumbotron</strong> and enter the same room code. It will show live dice, scores, and standings for the whole room.</div></div>
       <div class="rules-row"><div class="rules-row-name">4. Host Starts</div><div class="rules-row-desc">Once everyone is in the lobby, the host taps <strong>Start Game</strong>. All devices lock in at the same moment — game on!</div></div>
+    </div>
+    <div class="rules-section-title">Go Dice Game (Table Mode)</div>
+    <div class="rules-card">
+      <div class="rules-row"><div class="rules-row-name">1. What You Need</div><div class="rules-row-desc">Five <strong>GoDice</strong> (Bluetooth dice) and a tablet or Android device with Chrome. iPhone and iPad do not work. Close the GoDice app first, because a die can only connect to one app at a time.</div></div>
+      <div class="rules-row"><div class="rules-row-name">2. Connect</div><div class="rules-row-desc">Tap <strong>Go Dice Game</strong> in the lobby, add the players, choose 1, 3 or 6 games, and tap <strong>Connect GoDice</strong> once for each die.</div></div>
+      <div class="rules-row"><div class="rules-row-name">3. Playing</div><div class="rules-row-desc">Throw the dice onto the tray. Leave the dice you want to keep and throw the others again. Only the dice you throw count as rolled. After your last roll, tap a category to score it.</div></div>
+      <div class="rules-row"><div class="rules-row-name" style="color:var(--gold2)">4. Bazinco! ⚡</div><div class="rules-row-desc">All five dice the same: the dice flash gold, you get <strong>25 points</strong> and a fresh set of 3 rolls.</div></div>
+      <div class="rules-row"><div class="rules-row-name">5. Page Reloads</div><div class="rules-row-desc">Tap <strong>Continue this game</strong> to carry on where you were. You may need to connect the dice again.</div></div>
     </div>
     <div class="rules-section-title">How to Play</div>
     <p class="rules-intro">Roll 5 dice up to 3 times per turn. Tap any die to hold it. After rolling, tap a category to score it. Each category can only be used once across 12 turns.</p>
