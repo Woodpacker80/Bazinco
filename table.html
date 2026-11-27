@@ -156,7 +156,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.23</p>
+  <p class="sub">Table Mode · play with the GoDice on the tray · v0.24</p>
   <div class="box" id="resume" style="display:none;margin-bottom:12px"></div>
   <div class="cols">
    <div class="box">
@@ -525,7 +525,7 @@ function gameBreak(){
   const g=S.cur;
   const rows=S.players.map(p=>({n:p.name,t:gameTotal(p,g)})).sort((a,b)=>b.t-a.t);
   const ov=$('ov');
-  ov.innerHTML='<div class="card"><h1>Game '+(g+1)+' of '+S.games+' done</h1><table>'+rows.map(r=>'<tr><td>'+esc(r.n)+'</td><td class="n">'+r.t+'</td></tr>').join('')+'</table><button id="nextg" style="font-size:20px;padding:12px 30px">Start game '+(g+2)+'</button></div>';
+  ov.innerHTML='<div class="card win"><h1>Game '+(g+1)+' of '+S.games+' done</h1><table>'+rows.map(r=>'<tr><td>'+esc(r.n)+'</td><td class="n">'+r.t+'</td></tr>').join('')+'</table><button id="nextg" style="font-size:20px;padding:12px 30px">Start game '+(g+2)+'</button></div>';
   ov.classList.remove('end');ov.classList.add('on');
   $('nextg').onclick=function(){ov.classList.remove('on');S.cur++;S.turn=0;clearTurn();renderGame();saveGame();toast('Game '+(S.cur+1)+'. '+S.players[0].name+', your turn',2600);};
 }
