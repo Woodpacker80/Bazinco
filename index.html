@@ -701,7 +701,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.35 Cobalt · Go Dice help</div>
+  <div class="version-tag">v 6.36 Cobalt · Shared numbers</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -869,14 +869,14 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <div class="rules-row"><div class="rules-row-name">1. What You Need</div><div class="rules-row-desc">Five <strong>GoDice</strong> (Bluetooth dice) and a tablet or Android device with Chrome. iPhone and iPad do not work. Close the GoDice app first, because a die can only connect to one app at a time.</div></div>
       <div class="rules-row"><div class="rules-row-name">2. Connect</div><div class="rules-row-desc">Tap <strong>Go Dice Game</strong> in the lobby, add the players, choose 1, 3 or 6 games, and tap <strong>Connect GoDice</strong> once for each die.</div></div>
       <div class="rules-row"><div class="rules-row-name">3. Playing</div><div class="rules-row-desc">Throw the dice onto the tray. Leave the dice you want to keep and throw the others again. Only the dice you throw count as rolled. After your last roll, tap a category to score it.</div></div>
-      <div class="rules-row"><div class="rules-row-name" style="color:var(--gold2)">4. Bazinco! ⚡</div><div class="rules-row-desc">All five dice the same: the dice flash gold, you get <strong>25 points</strong> and a fresh set of 3 rolls.</div></div>
+      <div class="rules-row"><div class="rules-row-name" style="color:var(--gold2)">4. Bazinco! ⚡</div><div class="rules-row-desc">All five dice the same: the dice flash gold, you get <strong><span data-r="baz">25</span> points</strong> and a fresh set of 3 rolls.</div></div>
       <div class="rules-row"><div class="rules-row-name">5. Page Reloads</div><div class="rules-row-desc">Tap <strong>Continue this game</strong> to carry on where you were. You need to connect the dice again.</div></div>
     </div>
     <div class="rules-section-title">How to Play</div>
     <p class="rules-intro">Roll 5 dice up to 3 times per turn. Tap any die to hold it. After rolling, tap a category to score it. Each category can only be used once across 12 turns.</p>
     <div class="rules-section-title">Upper Section</div>
     <div class="rules-card">
-      <div class="rules-row"><div class="rules-row-name">Ones–Sixes</div><div class="rules-row-desc">Sum of all dice showing that number. Score 63+ to earn +35 bonus!</div><div class="rules-row-pts">Sum</div></div>
+      <div class="rules-row"><div class="rules-row-name">Ones–Sixes</div><div class="rules-row-desc">Sum of all dice showing that number. Score <span data-r="at">63</span>+ to earn +<span data-r="bonus">35</span> bonus!</div><div class="rules-row-pts">Sum</div></div>
     </div>
     <div class="rules-section-title">Lower Section</div>
     <div class="rules-card">
@@ -885,7 +885,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <div class="rules-row"><div class="rules-row-name">Full House</div><div class="rules-row-desc">Three of one, two of another</div><div class="rules-row-pts">25 pts</div></div>
       <div class="rules-row"><div class="rules-row-name">Small Straight</div><div class="rules-row-desc">Any 4 in sequence</div><div class="rules-row-pts">30 pts</div></div>
       <div class="rules-row"><div class="rules-row-name">Large Straight</div><div class="rules-row-desc">All 5 in sequence</div><div class="rules-row-pts">40 pts</div></div>
-      <div class="rules-row"><div class="rules-row-name" style="color:var(--gold2)">Bazinco! ⚡</div><div class="rules-row-desc">All 5 same — <strong style="color:var(--gold2)">auto jackpot!</strong> Each Bazinco: 25 pts. Free action!</div><div class="rules-row-pts" style="color:var(--gold2)">Auto!</div></div>
+      <div class="rules-row"><div class="rules-row-name" style="color:var(--gold2)">Bazinco! ⚡</div><div class="rules-row-desc">All 5 same — <strong style="color:var(--gold2)">auto jackpot!</strong> Each Bazinco: <span data-r="baz">25</span> pts. Free action!</div><div class="rules-row-pts" style="color:var(--gold2)">Auto!</div></div>
       <div class="rules-row"><div class="rules-row-name">Chance</div><div class="rules-row-desc">Any combination</div><div class="rules-row-pts">Sum all</div></div>
     </div>
     <p class="rules-tip">🎲 <strong>Bazinco!</strong> fires the moment dice land — your turn continues normally!</p>
@@ -937,6 +937,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 <script src="rules.js"></script>
 <script>
 if(typeof BazRules==="undefined"){document.addEventListener("DOMContentLoaded",function(){var d=document.createElement("div");d.style.cssText="position:fixed;top:0;left:0;right:0;z-index:99999;background:#b3261e;color:#fff;font:700 16px system-ui;padding:12px;text-align:center";d.textContent="rules.js was not found. Upload rules.js next to index.html.";document.body.appendChild(d);});}
+else{document.addEventListener("DOMContentLoaded",function(){var m={baz:BazRules.BAZ_PTS,at:BazRules.UPPER_BONUS_AT,bonus:BazRules.UPPER_BONUS};document.querySelectorAll("[data-r]").forEach(function(e){e.textContent=m[e.getAttribute("data-r")];});});}
 // DIAGNOSTIC SAFETY NET — catches any uncaught JS error and shows it directly on
 // screen as a red banner, no dev tools needed. Harmless when nothing goes wrong.
 window.addEventListener('error', function(e){
@@ -1006,7 +1007,7 @@ const SCATTER=[{x:60,y:80,r:-25},{x:155,y:55,r:15},{x:220,y:85,r:-10},{x:185,y:1
 
 const calcScore=BazRules.calcScore;   // scoring rules live in rules.js
 function upperSum(){return UPPER.reduce((t,c)=>t+(scores[c.id]??0),0);}
-function grandTotal(){let t=UPPER.reduce((s,c)=>s+(scores[c.id]??0),0)+LOWER.filter(c=>!c.isBaz).reduce((s,c)=>s+(scores[c.id]??0),0);if(upperSum()>=63)t+=35;return t+bazPts;}
+function grandTotal(){let t=UPPER.reduce((s,c)=>s+(scores[c.id]??0),0)+LOWER.filter(c=>!c.isBaz).reduce((s,c)=>s+(scores[c.id]??0),0);t+=BazRules.upperBonus(upperSum());return t+bazPts;}
 
 function makeSVG(val,size){
   const pos={1:[[50,50]],2:[[25,25],[75,75]],3:[[25,25],[50,50],[75,75]],4:[[25,25],[75,25],[25,75],[75,75]],5:[[25,25],[75,25],[50,50],[25,75],[75,75]],6:[[25,20],[75,20],[25,50],[75,50],[25,80],[75,80]]};
@@ -1057,9 +1058,9 @@ function renderStickyBar(){
 function renderSheet(){
   renderRows(UPPER,document.getElementById('upper-rows'));renderRows(LOWER,document.getElementById('lower-rows'));
   const u=upperSum();const strip=document.getElementById('bonus-strip');
-  document.getElementById('bonus-prog').textContent=`${u} / 63 for +35 pts`;
-  if(u>=63){strip.className='bonus-strip earned';document.getElementById('bonus-val').textContent='+35 ✓';}
-  else{strip.className='bonus-strip';document.getElementById('bonus-val').textContent=`${63-u} to go`;}
+  document.getElementById('bonus-prog').textContent=`${u} / ${BazRules.UPPER_BONUS_AT} for +${BazRules.UPPER_BONUS} pts`;
+  if(u>=BazRules.UPPER_BONUS_AT){strip.className='bonus-strip earned';document.getElementById('bonus-val').textContent='+'+BazRules.UPPER_BONUS+' ✓';}
+  else{strip.className='bonus-strip';document.getElementById('bonus-val').textContent=`${BazRules.UPPER_BONUS_AT-u} to go`;}
   document.getElementById('baz-count').textContent=bazCount;document.getElementById('hdr-score').textContent=grandTotal();
 }
 function renderRows(cats,el){
@@ -1109,8 +1110,8 @@ function checkAutoBazinco(){
   hasRolled=false;document.getElementById('btn-roll').disabled=true;
   // Payout (v6.25): every Bazinco is worth 25 pts. Total after n hits = 25*n.
   // Total after n hits = 25 + 50*(n-1) — the hit-count formulas elsewhere depend on that.
-  if(bazCount===0){bazPts+=25;bazCount++;scores['bazinco']=25;Audio.bazincoFanfare();Haptics.jackpot();showToast('BAZINCO! 25 pts!',2500);}
-  else{bazPts+=25;bazCount++;Audio.bazincoBonus();Haptics.bonus();showToast('BAZINCO BONUS! ⚡ +25 pts!',2500);}
+  if(bazCount===0){bazPts+=BazRules.BAZ_PTS;bazCount++;scores['bazinco']=BazRules.BAZ_PTS;Audio.bazincoFanfare();Haptics.jackpot();showToast('BAZINCO! '+BazRules.BAZ_PTS+' pts!',2500);}
+  else{bazPts+=BazRules.BAZ_PTS;bazCount++;Audio.bazincoBonus();Haptics.bonus();showToast('BAZINCO BONUS! ⚡ +'+BazRules.BAZ_PTS+' pts!',2500);}
   triggerJackpotFlash();renderSheet();
   const done=[...UPPER,...LOWER].filter(c=>!c.isBaz).every(c=>scores[c.id]!==undefined);
   setTimeout(()=>{
@@ -1173,7 +1174,7 @@ function showEnd(ranked){
 
   // ── Personal breakdown ──
   const bd=document.getElementById('end-breakdown');bd.innerHTML='';
-  const u=upperSum(),uB=u>=63?35:0;
+  const u=upperSum(),uB=BazRules.upperBonus(u);
   [
     ['Upper Section',u,false],
     ['Upper Bonus',uB,uB>0],
@@ -1277,7 +1278,7 @@ function rankPlayers(room){
   const allPlayers=room.players||{};
   const U=['ones','twos','threes','fours','fives','sixes'];
   const L=['threeKind','fourKind','fullHouse','smStraight','lgStraight','chance'];
-  function calcScore(p){const cs=(p&&p.scores&&typeof p.scores==='object')?p.scores:{};const u=U.reduce((t,id)=>t+Number(cs[id]??0),0);const l=L.reduce((t,id)=>t+Number(cs[id]??0),0);return u+l+(u>=63?35:0)+Number(cs['bazinco_pts']||0);}
+  function calcScore(p){const cs=(p&&p.scores&&typeof p.scores==='object')?p.scores:{};const u=U.reduce((t,id)=>t+Number(cs[id]??0),0);const l=L.reduce((t,id)=>t+Number(cs[id]??0),0);return u+l+BazRules.upperBonus(u)+Number(cs['bazinco_pts']||0);}
   function pName(pid,p){return(p&&p.name&&p.name.trim())||'Player';}
   return Object.entries(allPlayers).map(([pid,p])=>({name:pName(pid,p),score:calcScore(p),isMe:pid===roomPlayerId})).sort((a,b)=>b.score-a.score);
 }
@@ -1312,7 +1313,7 @@ async function tryResumeSession(){
       initGame();
       scores={...saved};delete scores.bazinco_pts;
       bazPts=Number(saved.bazinco_pts||0);
-      bazCount=bazPts>=25?Math.round(bazPts/25):0;
+      bazCount=bazPts>=BazRules.BAZ_PTS?Math.round(bazPts/BazRules.BAZ_PTS):0;
       renderSheet();
       const ds=room.diceState;
       if(ds&&ds.pid===roomPlayerId&&Array.isArray(ds.dice)){
@@ -1752,7 +1753,7 @@ function jmbRunScore(p){
   const lowerIds=['threeKind','fourKind','fullHouse','smStraight','lgStraight','chance'];
   const upper=upperIds.reduce((t,id)=>t+Number(cs[id]??0),0);
   const lower=lowerIds.reduce((t,id)=>t+Number(cs[id]??0),0);
-  const bonus=upper>=63?35:0;
+  const bonus=BazRules.upperBonus(upper);
   const baz=Number(cs['bazinco_pts']||0);
   return upper+lower+bonus+baz;
 }
@@ -1802,9 +1803,9 @@ function jmbRenderSpotlight(pid,player,safeName){
     row.innerHTML=`<div class="j-cat-name">${cat.name}</div><div class="j-cat-val${banked&&val===0?' zero':''}">${banked?val:'—'}</div>`;
     grid.appendChild(row);
   });
-  const bonusEarned=uSum>=63;
+  const bonusEarned=uSum>=BazRules.UPPER_BONUS_AT;
   const bRow=document.createElement('div');bRow.className='j-bonus-row';
-  bRow.innerHTML=`<div class="j-bonus-name">Bonus</div><div class="j-bonus-val${bonusEarned?' earned':''}">${bonusEarned?'+35 ✓':`${uSum}/63`}</div>`;
+  bRow.innerHTML=`<div class="j-bonus-name">Bonus</div><div class="j-bonus-val${bonusEarned?' earned':''}">${bonusEarned?'+'+BazRules.UPPER_BONUS+' ✓':`${uSum}/${BazRules.UPPER_BONUS_AT}`}</div>`;
   grid.appendChild(bRow);
   // Lower
   const lHdr=document.createElement('div');lHdr.className='j-cat-section';lHdr.textContent='Lower';grid.appendChild(lHdr);
@@ -1822,7 +1823,7 @@ function jmbRenderSpotlight(pid,player,safeName){
   // Bazinco row — spans both columns (grid-column:1/-1), looks like a category row
   const bazRaw=cs['bazinco_pts'];
   const bazVal=(bazRaw!==undefined&&bazRaw!==null&&Number(bazRaw)>0)?Number(bazRaw):0;
-  const bazHits=bazVal>=25?Math.round(bazVal/25):0;
+  const bazHits=bazVal>=BazRules.BAZ_PTS?Math.round(bazVal/BazRules.BAZ_PTS):0;
   const bazRow=document.createElement('div');
   bazRow.className='j-cat-row '+(bazVal>0?'cat-scored':'cat-pending');
   bazRow.style.gridColumn='1/-1';// span full width in the 2-col grid
@@ -1838,7 +1839,7 @@ function jmbRenderSpotlight(pid,player,safeName){
   }
   el.appendChild(grid);
   // Fix 3: Running total goes to the FIXED footer — never covered by scrolling content
-  const runTotal=uSum+lSum+(bonusEarned?35:0)+bazVal;
+  const runTotal=uSum+lSum+(bonusEarned?BazRules.UPPER_BONUS:0)+bazVal;
   if(footerEl){footerEl.innerHTML='';const tRow=document.createElement('div');tRow.className='j-total-row';tRow.innerHTML=`<div class="j-total-name">Current Total</div><div class="j-total-val">${runTotal}</div>`;footerEl.appendChild(tRow);}
 }
 
