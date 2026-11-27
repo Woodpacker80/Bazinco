@@ -287,6 +287,13 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .rules-row-pts{font-family:'Cinzel',serif;font-size:12px;color:var(--gold2);font-weight:700;white-space:nowrap;align-self:center;}
 .rules-tip{font-size:12px;color:#ffffff;line-height:1.6;margin:10px 0 20px;opacity:0.8;}
 .rules-tip strong{color:var(--gold2);opacity:1;}
+.rules-about{margin-top:26px;padding-top:18px;border-top:1px solid var(--border);text-align:center;}
+.rules-about .ab-title{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--gold2);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;}
+.rules-about .ab-line{font-size:12px;color:#ffffff;opacity:.8;line-height:1.7;}
+.rules-about .ab-head{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--gold2);letter-spacing:2px;text-transform:uppercase;margin:12px 0 4px;}
+.rules-about ul{list-style:none;margin:0;padding:0;}
+.rules-about li{font-size:12px;color:#ffffff;opacity:.8;line-height:1.8;}
+.rules-about li::before{content:"\25E6  ";color:var(--gold2);}
 .rules-got-it-wrap{padding:20px 16px 36px;flex-shrink:0;}
 .btn-got-it{width:100%;background:linear-gradient(135deg,var(--gold2),var(--gold));border:none;border-radius:var(--radius);color:#1a0800;font-family:'Cinzel',serif;font-size:16px;font-weight:700;letter-spacing:3px;padding:18px;cursor:pointer;box-shadow:0 4px 24px rgba(201,151,42,0.3),inset 0 1px 0 rgba(255,255,255,0.18);transition:transform 0.12s;}
 .btn-got-it:active{transform:scale(0.97);}
@@ -701,7 +708,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.36 Cobalt · Shared numbers</div>
+  <div class="version-tag">v 6.37 Cobalt · About credits</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -890,6 +897,18 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     </div>
     <p class="rules-tip">🎲 <strong>Bazinco!</strong> fires the moment dice land — your turn continues normally!</p>
     <p class="rules-tip">⚠️ You must score a category every turn — even if the score is 0.</p>
+    <div class="rules-about">
+      <div class="ab-title">About Bazinco!</div>
+      <div class="ab-line">Designed and built in Haarlem, The Netherlands 2026</div>
+      <div class="ab-head">The team</div>
+      <ul>
+        <li>Game Designer &amp; Producer: M.H. Oddens</li>
+        <li>Programmer &amp; Co-Designer: Claude AI (Anthropic)</li>
+        <li>Code Auditor &amp; CSS Reviewer: Gemini AI (Google)</li>
+      </ul>
+      <div class="ab-head">Powered by</div>
+      <div class="ab-line">Google Firebase</div>
+    </div>
   </div>
   <div class="rules-got-it-wrap"><button class="btn-got-it" id="btn-got-it">GOT IT!</button></div>
 </div>
