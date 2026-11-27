@@ -156,7 +156,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.24</p>
+  <p class="sub">Table Mode · play with the GoDice on the tray · v0.25</p>
   <div class="box" id="resume" style="display:none;margin-bottom:12px"></div>
   <div class="cols">
    <div class="box">
@@ -210,7 +210,9 @@ button:disabled{opacity:.4}
 <div id="warn"></div>
 
 <script src="godice.js"></script>
+<script src="rules.js"></script>
 <script>
+if(typeof BazRules==="undefined"){document.addEventListener("DOMContentLoaded",function(){var d=document.createElement("div");d.style.cssText="position:fixed;top:0;left:0;right:0;z-index:99999;background:#b3261e;color:#fff;font:700 16px system-ui;padding:12px;text-align:center";d.textContent="rules.js was not found. Upload rules.js next to table.html.";document.body.appendChild(d);});}
 (function(){
 'use strict';
 const NDICE=5, SETTLE_MS=700, SETTLE_LONG=2600, LONG_TUMBLE=2000, END_IDLE_MS=45000, ROLLS=3, MAXP=6;
@@ -218,27 +220,13 @@ const UPPER=[['ones','Ones'],['twos','Twos'],['threes','Threes'],['fours','Fours
 const LOWER=[['threeKind','Three of a Kind'],['fourKind','Four of a Kind'],['fullHouse','Full House'],['smStraight','Small Straight'],['lgStraight','Large Straight'],['chance','Chance']];
 const ALLCATS=[...UPPER,...LOWER].map(c=>c[0]);
 const NAME=Object.fromEntries([...UPPER,...LOWER]);
-const BAZ_PTS=25;
+const BAZ_PTS=BazRules.BAZ_PTS;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- scoring (same rules as the phone game) ---------- */
-function calcScore(id,d){
-  d=d.map(Number);
-  const cnt=Array(7).fill(0);d.forEach(v=>cnt[v]++);const sum=d.reduce((a,b)=>a+b,0);
-  switch(id){
-    case 'ones':return cnt[1];case 'twos':return cnt[2]*2;case 'threes':return cnt[3]*3;
-    case 'fours':return cnt[4]*4;case 'fives':return cnt[5]*5;case 'sixes':return cnt[6]*6;
-    case 'threeKind':return cnt.some(c=>c>=3)?sum:0;
-    case 'fourKind':return cnt.some(c=>c>=4)?sum:0;
-    case 'fullHouse':return(cnt.some(c=>c===3)&&cnt.some(c=>c===2))?25:0;
-    case 'smStraight':{const u=[...new Set(d)].sort((a,b)=>a-b).join('');return(u.includes('1234')||u.includes('2345')||u.includes('3456'))?30:0;}
-    case 'lgStraight':{const u=[...new Set(d)].sort((a,b)=>a-b).join('');return(u==='12345'||u==='23456')?40:0;}
-    case 'chance':return sum;
-    default:return 0;
-  }
-}
-const isBazinco=d=>d.length===NDICE&&d.every(v=>v>0&&v===d[0]);
+const calcScore=BazRules.calcScore;   // scoring rules live in rules.js
+const isBazinco=d=>BazRules.isBazinco(d,NDICE);
 
 /* ---------- state ---------- */
 const slots=[];                 // connected GoDice
@@ -272,7 +260,7 @@ function newGame(names,games){
   };
 }
 const upSum=(p,g)=>UPPER.reduce((t,c)=>t+(p.sc[g][c[0]]??0),0);
-const bonus=(p,g)=>upSum(p,g)>=63?35:0;
+const bonus=(p,g)=>BazRules.upperBonus(upSum(p,g));
 const lowSum=(p,g)=>LOWER.reduce((t,c)=>t+(p.sc[g][c[0]]??0),0)+p.baz[g];
 const gameTotal=(p,g)=>upSum(p,g)+bonus(p,g)+lowSum(p,g);
 const seriesTotal=p=>p.sc.reduce((t,_,g)=>t+gameTotal(p,g),0);
@@ -647,8 +635,8 @@ function renderSections(){
   const p=S.players[S.turn];
   const colsU=colsTpl(78),colsL=colsTpl(146);
   let u='<div class="sec" style="--cols:'+colsU+'">'+headRow()+UPPER.map(c=>catRow(c[0])).join('')
-    +totalRow('Ones–Sixes',(pl,g)=>'<b>'+upSum(pl,g)+'</b>&nbsp;/ 63')
-    +totalRow('Bonus',(pl,g)=>bonus(pl,g)?'35':'–')
+    +totalRow('Ones–Sixes',(pl,g)=>'<b>'+upSum(pl,g)+'</b>&nbsp;/ '+BazRules.UPPER_BONUS_AT)
+    +totalRow('Bonus',(pl,g)=>bonus(pl,g)?String(BazRules.UPPER_BONUS):'–')
     +totalRow('Upper total',(pl,g)=>upSum(pl,g)+bonus(pl,g))+'</div>';
   let bz='<div class="row baz">'+cell('nm','Bazinco ⚡');
   for(let g=0;g<S.games;g++)bz+=cell(g===S.cur?'cur':'',p.baz[g]?p.baz[g]+'<small>×'+p.bn[g]+'</small>':'');
