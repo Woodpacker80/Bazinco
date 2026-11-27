@@ -25,6 +25,7 @@ button:disabled{opacity:.4}
 #screen-setup .card{margin:auto}
 .card{background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:18px 20px;width:min(980px,100%)}
 .card h1{margin:0;font-size:34px;letter-spacing:.5px}
+#screen-setup .card h1{font-family:'Cinzel',serif;font-weight:900;text-transform:uppercase;letter-spacing:6px;background:linear-gradient(160deg,#f5d878 0%,#c9972a 55%,#e8bc55 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 1px 1px rgba(15,28,43,.55))}
 .card .sub{color:var(--mute);margin:0 0 12px}
 .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
 .box{background:#fff;border:2px solid var(--line);border-radius:14px;padding:12px}
@@ -156,7 +157,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.25</p>
+  <p class="sub">Table Mode · v0.27</p>
   <div class="box" id="resume" style="display:none;margin-bottom:12px"></div>
   <div class="cols">
    <div class="box">
@@ -175,8 +176,6 @@ button:disabled{opacity:.4}
     <button id="dconn" style="width:100%">Connect GoDice (0 / 5)</button>
     <div class="dchips" id="dchips"></div>
     <div class="hint">Close the GoDice app first. Shake a die to wake it, then pick it in the list. Repeat for each die.</div>
-    <button id="dauto" class="alt" style="width:100%;margin-top:8px;min-height:40px">Reconnect remembered dice</button>
-    <div class="hint" id="autoinfo"></div>
    </div>
   </div>
   <div class="startrow"><button id="start" disabled>Start game</button><span id="startmsg" class="hint"></span></div>
@@ -391,34 +390,6 @@ $('dconn').onclick=function(){
   d.requestDevice().catch(function(e){toast('Connect cancelled',1800);});
 };
 
-
-/* ---------- level 2 experiment: reconnect remembered dice without the chooser ---------- */
-let autoBusy=false;
-async function tryAuto(){
-  const info=$('autoinfo');
-  if(autoBusy)return;
-  if(!(navigator.bluetooth&&navigator.bluetooth.getDevices)){info.textContent='Auto-reconnect is not available in this browser. Use Connect GoDice.';return;}
-  autoBusy=true;
-  try{
-    let devs=[];
-    try{devs=await navigator.bluetooth.getDevices();}catch(e){info.textContent='Auto-reconnect is not available ('+(e&&e.name?e.name:'error')+').';return;}
-    devs=devs.filter(d=>d.name&&d.name.indexOf('GoDice_')===0);
-    if(!devs.length){info.textContent='No remembered dice found yet. Connect them once with Connect GoDice.';return;}
-    info.textContent='Found '+devs.length+' remembered dice. Connecting… (shake a die that does not answer)';
-    let ok=0;
-    for(const dev of devs){
-      if(slots.length>=NDICE)break;
-      const id=dev.id.toString();
-      if(slots.some(x=>x.id===id))continue;
-      const d=new GoDice();wire(d);
-      d.GlobalDeviceId=id;d.bluetoothDevice=dev;
-      dev.addEventListener('gattserverdisconnected',function(){d.onDiceDisconnected(id,d);});
-      try{await d.connectDeviceAndCacheCharacteristics();ok++;}catch(e){}
-    }
-    info.textContent='Reconnected '+ok+' of '+devs.length+' remembered dice.'+(ok<devs.length?' Shake the others and press the button again.':'');
-  }finally{autoBusy=false;}
-}
-$('dauto').onclick=tryAuto;
 
 /* ---------- roll batches ---------- */
 function maybeFinish(){
@@ -655,7 +626,6 @@ function renderGrand(){
 }
 
 renderSetup();
-tryAuto();
 window.__table={get S(){return S;},slots:slots,finishBatch:finishBatch,endSeries:endSeries};
 })();
 </script>
