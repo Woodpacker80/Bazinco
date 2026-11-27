@@ -101,10 +101,15 @@ button:disabled{opacity:.4}
 /* overlays */
 #ov{position:fixed;inset:0;background:rgba(15,28,43,.55);display:none;align-items:center;justify-content:center;z-index:20;padding:16px}
 #ov.on{display:flex}
+#ov.end{background:rgba(6,16,40,.94)}
 #ov .card{width:min(560px,100%);text-align:center}
 #ov table{width:100%;border-collapse:collapse;margin:10px 0 16px;text-align:left}
 #ov td{padding:6px 8px;border-bottom:1px solid var(--line);font-weight:700}
 #ov td.n{text-align:right;font-size:20px}
+#ov .card.win{background:linear-gradient(180deg,#14397a,#0b2255);border:2px solid #c9972a;color:#fff;box-shadow:0 0 40px rgba(201,151,42,.35)}
+#ov .card.win h1{font-family:'Cinzel',serif;font-weight:900;letter-spacing:3px;background:linear-gradient(160deg,#f5d878 0%,#c9972a 55%,#e8bc55 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+#ov .card.win td{border-bottom-color:rgba(245,216,120,.3);color:#fff}
+#ov .card.win td.n{color:#f5d878}
 #toast{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:12px;font-weight:700;font-size:18px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:30;max-width:90vw;text-align:center}
 #toast.on{opacity:1}
 #warn{position:fixed;left:0;right:0;bottom:0;background:var(--bad);color:#fff;font-weight:700;padding:8px 14px;text-align:center;z-index:25;display:none}
@@ -145,7 +150,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.19</p>
+  <p class="sub">Table Mode · play with the GoDice on the tray · v0.21</p>
   <div class="box" id="resume" style="display:none;margin-bottom:12px"></div>
   <div class="cols">
    <div class="box">
@@ -495,19 +500,19 @@ function gameBreak(){
   const rows=S.players.map(p=>({n:p.name,t:gameTotal(p,g)})).sort((a,b)=>b.t-a.t);
   const ov=$('ov');
   ov.innerHTML='<div class="card"><h1>Game '+(g+1)+' of '+S.games+' done</h1><table>'+rows.map(r=>'<tr><td>'+esc(r.n)+'</td><td class="n">'+r.t+'</td></tr>').join('')+'</table><button id="nextg" style="font-size:20px;padding:12px 30px">Start game '+(g+2)+'</button></div>';
-  ov.classList.add('on');
+  ov.classList.remove('end');ov.classList.add('on');
   $('nextg').onclick=function(){ov.classList.remove('on');S.cur++;S.turn=0;clearTurn();renderGame();saveGame();toast('Game '+(S.cur+1)+'. '+S.players[0].name+', your turn',2600);};
 }
 function endSeries(){
   clearSave();
   const st=standings();
   const ov=$('ov');
-  ov.innerHTML='<div class="card"><h1>'+esc(st[0].p.name)+' wins!</h1><table>'+st.map((r,k)=>'<tr><td>'+(k+1)+'. '+esc(r.p.name)+'</td><td class="n">'+r.t+'</td></tr>').join('')+'</table><button id="again" style="font-size:20px;padding:12px 30px">Play again</button></div>';
-  ov.classList.add('on');victoryFanfare();confetti();
+  ov.innerHTML='<div class="card win"><h1>'+esc(st[0].p.name)+' wins!</h1><table>'+st.map((r,k)=>'<tr><td>'+(k+1)+'. '+esc(r.p.name)+'</td><td class="n">'+r.t+'</td></tr>').join('')+'</table><button id="again" style="font-size:20px;padding:12px 30px">Play again</button></div>';
+  ov.classList.add('on','end');victoryFanfare();confetti();
   let gone=false;
   function goCredits(){
     if(gone)return;gone=true;clearTimeout(endTimer);
-    ov.classList.remove('on');phase='setup';S=null;
+    ov.classList.remove('on','end');phase='setup';S=null;
     showCredits(function(){show('screen-setup');renderSetup();});
   }
   $('again').onclick=goCredits;
