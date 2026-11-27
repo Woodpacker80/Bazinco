@@ -145,7 +145,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.18</p>
+  <p class="sub">Table Mode · play with the GoDice on the tray · v0.19</p>
   <div class="box" id="resume" style="display:none;margin-bottom:12px"></div>
   <div class="cols">
    <div class="box">
@@ -614,7 +614,7 @@ function totalRow(label,fn){
 }
 function renderSections(){
   const p=S.players[S.turn];
-  const colsU=colsTpl(86),colsL=colsTpl(146);
+  const colsU=colsTpl(78),colsL=colsTpl(146);
   let u='<div class="sec" style="--cols:'+colsU+'">'+headRow()+UPPER.map(c=>catRow(c[0])).join('')
     +totalRow('Ones–Sixes',(pl,g)=>'<b>'+upSum(pl,g)+'</b>&nbsp;/ 63')
     +totalRow('Bonus',(pl,g)=>bonus(pl,g)?'35':'–')
