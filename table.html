@@ -102,6 +102,12 @@ button:disabled{opacity:.4}
 #ov{position:fixed;inset:0;background:rgba(15,28,43,.55);display:none;align-items:center;justify-content:center;z-index:20;padding:16px}
 #ov.on{display:flex}
 #ov.end{background:rgba(6,16,40,.94)}
+#bazfx{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(6,16,40,.94);opacity:0;pointer-events:none;transition:opacity .25s ease}
+#bazfx.on{opacity:1}
+#bazfx.off{opacity:0;transition:opacity .7s ease}
+#bazfx .bt{font-family:'Cinzel',serif;font-size:clamp(56px,11vw,130px);font-weight:900;letter-spacing:6px;text-align:center;background:linear-gradient(160deg,#f5d878 0%,#c9972a 50%,#e8bc55 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:bazPulse .8s ease-in-out infinite alternate}
+#bazfx .bp{font-family:'Cinzel',serif;font-size:clamp(28px,5vw,56px);font-weight:700;color:#f5d878;letter-spacing:3px}
+@keyframes bazPulse{from{filter:drop-shadow(0 0 24px rgba(245,216,120,.7)) drop-shadow(0 0 48px rgba(201,151,42,.4))}to{filter:drop-shadow(0 0 48px rgba(245,216,120,1)) drop-shadow(0 0 96px rgba(201,151,42,.8))}}
 #ov .card{width:min(560px,100%);text-align:center}
 #ov table{width:100%;border-collapse:collapse;margin:10px 0 16px;text-align:left}
 #ov td{padding:6px 8px;border-bottom:1px solid var(--line);font-weight:700}
@@ -150,7 +156,7 @@ button:disabled{opacity:.4}
 <div id="screen-setup" class="screen on">
  <div class="card">
   <h1>Bazinco!</h1>
-  <p class="sub">Table Mode · play with the GoDice on the tray · v0.21</p>
+  <p class="sub">Table Mode · play with the GoDice on the tray · v0.22</p>
   <div class="box" id="resume" style="display:none;margin-bottom:12px"></div>
   <div class="cols">
    <div class="box">
@@ -197,6 +203,8 @@ button:disabled{opacity:.4}
   </div>
 </div>
 
+<div id="bazfx"><div class="bt">BAZINCO!</div><div class="bp">+25 points</div></div>
+<div id="bazfx"><div class="bt">BAZINCO!</div><div class="bp">+25 points</div></div>
 <div id="ov"></div>
 <div id="toast"></div>
 <div id="warn"></div>
@@ -463,10 +471,25 @@ function finishBatch(){
   if(isBazinco(S.dice)){bazinco();return;}
   renderGame();
 }
+let bazTimer=null;
+function bazincoSound(){
+  if(!actx)return;const t=actx.currentTime;
+  [[0,330,0.1],[0.06,440,0.12],[0.12,550,0.14],[0.2,660,0.16],[0.28,880,0.18],[0.38,1100,0.2]].forEach(([d,f,v])=>{
+    const o=actx.createOscillator(),g=actx.createGain();o.type='sawtooth';o.frequency.value=f;
+    g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(v,t+d+0.015);g.gain.exponentialRampToValueAtTime(0.001,t+d+0.25);
+    o.connect(g);g.connect(actx.destination);o.start(t+d);o.stop(t+d+0.27);
+  });
+}
+function bazinkoFx(){
+  const el=$('bazfx');clearTimeout(bazTimer);
+  el.classList.remove('off');el.classList.add('on');
+  bazincoSound();
+  bazTimer=setTimeout(function(){el.classList.remove('on');el.classList.add('off');setTimeout(function(){el.classList.remove('off');},800);},2400);
+}
 function bazinco(){
   const p=S.players[S.turn];
   p.baz[S.cur]+=BAZ_PTS;p.bn[S.cur]++;
-  toast('BAZINCO! +'+BAZ_PTS+' points. Roll again!',3000);
+  bazinkoFx();
   for(let i=0;i<slots.length;i++)led(i,d=>d.pulseLed(6,25,25,[255,190,0]));
   setTimeout(allOff,2600);
   S.rolls=0;S.dice=Array(NDICE).fill(0);S.held=Array(NDICE).fill(false);S.sel=null;
