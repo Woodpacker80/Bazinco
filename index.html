@@ -563,7 +563,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .jc::before{content:'';position:absolute;inset:0;background-image:repeating-linear-gradient(135deg,transparent,transparent 4px,rgba(255,255,255,0.01) 4px,rgba(255,255,255,0.01) 8px);pointer-events:none;}
 .jc-state{display:none;flex-direction:column;align-items:center;gap:12px;z-index:1;width:100%;}
 .jc-state.vis{display:flex;}
-#jmb-st-done.vis{justify-content:flex-start;margin-top:30px;margin-bottom:auto;}
+#jmb-st-done.vis{justify-content:flex-start;align-self:stretch;height:100%;min-height:0;margin:0;padding:14px 0 10px;gap:6px;}
 .jc-entry-title{font-family:'Cinzel',serif;font-size:20px;font-weight:900;color:var(--gold2);letter-spacing:3px;}
 .jc-entry-sub{font-size:14px;color:var(--text2);letter-spacing:1px;}
 .jc-code-input{background:var(--surface2);border:2px solid var(--gold);border-radius:14px;color:var(--text);font-family:'Cinzel',serif;font-size:36px;font-weight:900;padding:14px 22px;outline:none;text-transform:uppercase;letter-spacing:12px;text-align:center;width:240px;}
@@ -579,9 +579,9 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .jc-die.jc-held{background:linear-gradient(145deg,#d4f0b0,#b8e090);box-shadow:0 0 0 3px var(--held-bdr),0 0 16px rgba(74,191,104,0.4),0 4px 12px rgba(74,191,104,0.2),inset 0 1px 0 rgba(255,255,255,0.7);transform:scale(1.08);}
 .jc-roll-status{font-family:'Cinzel',serif;font-size:12px;color:var(--text2);letter-spacing:3px;text-transform:uppercase;}
 .jc-done-title{font-family:'Cinzel',serif;font-size:26px;font-weight:900;color:var(--gold2);letter-spacing:3px;}
-.jc-done-btns{display:none;gap:16px;margin-top:26px;justify-content:center;flex-wrap:wrap;}
-.jc-done-btns button{width:auto;padding:14px 30px;}
-.jc-winner{font-size:15px;color:var(--text2);letter-spacing:2px;text-align:center;}
+.jc-done-btns{display:none;gap:14px;margin-top:auto;padding-top:8px;justify-content:center;flex-wrap:nowrap;flex-shrink:0;}
+.jc-done-btns button{width:auto;padding:9px 24px;font-size:13px;}
+.jc-winner{font-size:15px;color:var(--text2);letter-spacing:2px;text-align:center;line-height:2.1;overflow-y:auto;min-height:0;flex:1 1 auto;width:100%;}
 
 /* Right — Active Scorecard: fixed header+footer, scrollable categories */
 .jr{
@@ -721,7 +721,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.38 Cobalt · Play again</div>
+  <div class="version-tag">v 6.39 Cobalt · Play again layout</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -1687,7 +1687,7 @@ function jmbOnRoomUpdate(room){
     jmbSetState('done');
     const ranked=[...entries].sort((a,b)=>jmbRunScore(b[1])-jmbRunScore(a[1]));
     const lines=ranked.map(([pid,p],i)=>{const medals=['🥇','🥈','🥉'];return`${medals[i]||`${i+1}.`} ${safeName(pid,p)}: ${jmbRunScore(p)} pts`;});
-    document.getElementById('jmb-winner-text').innerHTML=lines.join('<br><br>');
+    document.getElementById('jmb-winner-text').innerHTML=lines.join('<br>');
     const doneBtns=document.getElementById('jmb-done-btns');if(doneBtns)doneBtns.style.display=tvRoomCode?'flex':'none';
     if(tvRoomCode&&!tvAgainTimer&&!tvAgainBusy)tvAgainTimer=setTimeout(tvPlayAgain,45000);
     jmbPrevStatus=room.status;
