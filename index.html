@@ -130,6 +130,17 @@ async function roomRestart(code){
     });
   }catch(e){console.error('roomRestart error:',e);}
 }
+// Back to the lobby after a finished match (used by the TV host's PLAY AGAIN): same players stay in the room,
+// scorecards are wiped and the room is joinable again (status 'waiting'); roomStart then begins the next match.
+async function roomReturnToLobby(code){
+  try{
+    const snap=await get(ref(db,`${RP}/${code}`));if(!snap.exists())return;
+    const players=snap.val().players||{};
+    const resets={};
+    Object.keys(players).forEach(pid=>{resets[`players/${pid}/scores`]={};resets[`players/${pid}/finalScore`]=null;});
+    await update(ref(db,`${RP}/${code}`),{...resets,status:'waiting',activePid:null,roundNum:1,finishedAt:null,diceState:null});
+  }catch(e){console.error('roomReturnToLobby error:',e);}
+}
 async function roomCleanup(code){try{await remove(ref(db,`${RP}/${code}`));}catch(e){}}
 // One-shot read (no listener) — used to check a room's state once on page load,
 // e.g. to decide whether a saved session is still resumable after a reload.
@@ -144,7 +155,7 @@ function roomListen(code,cb){
   });
 }
 window.CloudScores={cloudAddScore,cloudWatchScores};
-window.CloudRoom={roomCreate,roomCreateEmpty,roomJoin,roomKick,roomClearBans,roomClearPlayers,roomStart,roomBankScore,roomSaveFinalScore,roomBroadcastDice,roomCleanup,roomListen,roomLeave,roomRestart,roomPeek};
+window.CloudRoom={roomCreate,roomCreateEmpty,roomJoin,roomKick,roomClearBans,roomClearPlayers,roomStart,roomBankScore,roomSaveFinalScore,roomBroadcastDice,roomCleanup,roomListen,roomLeave,roomRestart,roomReturnToLobby,roomPeek};
 // This module script is always deferred by the spec, so it can finish AFTER the plain
 // <script> below it even though it appears earlier in the file — anything in that script
 // that needs CloudRoom at page-load time (not just inside a later click handler) has to
@@ -568,6 +579,8 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
 .jc-die.jc-held{background:linear-gradient(145deg,#d4f0b0,#b8e090);box-shadow:0 0 0 3px var(--held-bdr),0 0 16px rgba(74,191,104,0.4),0 4px 12px rgba(74,191,104,0.2),inset 0 1px 0 rgba(255,255,255,0.7);transform:scale(1.08);}
 .jc-roll-status{font-family:'Cinzel',serif;font-size:12px;color:var(--text2);letter-spacing:3px;text-transform:uppercase;}
 .jc-done-title{font-family:'Cinzel',serif;font-size:26px;font-weight:900;color:var(--gold2);letter-spacing:3px;}
+.jc-done-btns{display:none;gap:16px;margin-top:26px;justify-content:center;flex-wrap:wrap;}
+.jc-done-btns button{width:auto;padding:14px 30px;}
 .jc-winner{font-size:15px;color:var(--text2);letter-spacing:2px;text-align:center;}
 
 /* Right — Active Scorecard: fixed header+footer, scrollable categories */
@@ -708,7 +721,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
       <button class="lobby-back" id="btn-solo-back">← BACK</button>
     </div>
   </div>
-  <div class="version-tag">v 6.37 Cobalt · About credits</div>
+  <div class="version-tag">v 6.38 Cobalt · Play again</div>
 </div>
 
 <!-- JUMBOTRON v6.3 — Room code in header left, BAZINCO! centred, two-col spotlight -->
@@ -756,6 +769,7 @@ body::before{content:'';position:fixed;inset:0;background-image:repeating-linear
     <div class="jc-state" id="jmb-st-done">
       <div class="jc-done-title">🏆 FINAL RESULTS</div>
       <div class="jc-winner" id="jmb-winner-text">—</div>
+      <div class="jc-done-btns" id="jmb-done-btns"><button class="btn-primary" id="jmb-btn-again">🎲 PLAY AGAIN</button><button class="btn-secondary" id="jmb-btn-close">✕ CLOSE ROOM</button></div>
     </div>
   </div>
   <!-- Right column: Active scorecard — fixed header, scrollable cats, fixed total footer -->
@@ -1418,7 +1432,7 @@ async function doJoin(){
 // TV SELF-HOSTING: tapping "Create Room" auto-creates an empty room (no player attached)
 // and shows its QR/player-list/Start-Game right in the 3-column lobby. Whoever's at the
 // tablet controls Start Game / Cancel Room directly — no phone ever has to "be the host."
-let tvRoomCode=null,tvUnsub=null;
+let tvRoomCode=null,tvUnsub=null,tvAgainTimer=null,tvAgainBusy=false;
 async function tvHostStart(){
   Audio.unlock();Audio.uiTick();Haptics.tick();
   document.getElementById('btn-create-room').style.display='none';
@@ -1429,6 +1443,32 @@ async function tvHostStart(){
   tvRoomCode=r.code;
   saveSession({role:'tv',roomCode:tvRoomCode});
   document.getElementById('create-qr-img').src=qrImgSrc(tvRoomCode,140);
+  document.getElementById('create-qr-wrap').style.display='flex';
+  document.getElementById('btn-tv-host-start').style.display='block';
+  document.getElementById('btn-tv-host-close').style.display='flex';
+  if(tvUnsub){tvUnsub();tvUnsub=null;}
+  tvUnsub=window.CloudRoom.roomListen(tvRoomCode,tvOnRoomUpdate);
+}
+// TV host: PLAY AGAIN on the final results. Same flow as Go Dice mode: credits, then back to the lobby
+// with the same players (scorecards wiped), ready for START GAME. Rolls the credits by itself after 45 s.
+function tvPlayAgain(){
+  if(!tvRoomCode||tvAgainBusy||!window.CloudRoom)return;
+  tvAgainBusy=true;clearTimeout(tvAgainTimer);tvAgainTimer=null;
+  Audio.uiTick();Haptics.tick();
+  if(jmbUnsub){jmbUnsub();jmbUnsub=null;}
+  document.getElementById('screen-jumbotron').classList.remove('active');
+  showCredits(async()=>{
+    await window.CloudRoom.roomReturnToLobby(tvRoomCode);
+    tvBackToLobby();
+    tvAgainBusy=false;
+  });
+}
+function tvBackToLobby(){
+  jmbPrevStatus=null;jmbPrevRollTs=null;jmbPrevActivePid=null;
+  document.getElementById('jmb-winner-text').innerHTML='';
+  document.getElementById('jmb-room-code').textContent=tvRoomCode||'—';
+  showScreen('screen-name');
+  document.getElementById('btn-create-room').style.display='none';
   document.getElementById('create-qr-wrap').style.display='flex';
   document.getElementById('btn-tv-host-start').style.display='block';
   document.getElementById('btn-tv-host-close').style.display='flex';
@@ -1537,6 +1577,12 @@ function onRoomUpdate(room){
     renderRollUI();
   }
   if(room.status==='playing'&&document.getElementById('screen-waiting')?.classList.contains('active')){roomPrevStatus=room.status;initGame();return;}
+  // TV host pressed PLAY AGAIN: room is back in the lobby (same players, fresh scorecards) -> everyone returns to the waiting room.
+  if(room.status==='waiting'&&roomPrevStatus==='done'){
+    const ab0=document.getElementById('btn-again');if(ab0){ab0.textContent='PLAY AGAIN';ab0.disabled=false;ab0.style.opacity='';}
+    hasSavedScore=false;roomPrevStatus='waiting';
+    openWaitingRoom();return;
+  }
   // Auto-pull: host restarted — pull everyone from end screen into new game.
   // Gated on roomPrevStatus==='done' so this only fires on a genuine done→playing
   // transition (an actual restart). Without that check, this used to also fire for a
@@ -1642,6 +1688,8 @@ function jmbOnRoomUpdate(room){
     const ranked=[...entries].sort((a,b)=>jmbRunScore(b[1])-jmbRunScore(a[1]));
     const lines=ranked.map(([pid,p],i)=>{const medals=['🥇','🥈','🥉'];return`${medals[i]||`${i+1}.`} ${safeName(pid,p)}: ${jmbRunScore(p)} pts`;});
     document.getElementById('jmb-winner-text').innerHTML=lines.join('<br><br>');
+    const doneBtns=document.getElementById('jmb-done-btns');if(doneBtns)doneBtns.style.display=tvRoomCode?'flex':'none';
+    if(tvRoomCode&&!tvAgainTimer&&!tvAgainBusy)tvAgainTimer=setTimeout(tvPlayAgain,45000);
     jmbPrevStatus=room.status;
     return;
   }
@@ -1906,6 +1954,8 @@ document.getElementById('btn-multiplayer-menu').addEventListener('click',()=>{Au
 document.getElementById('btn-create-room').addEventListener('click',()=>{tvHostStart();});
 document.getElementById('btn-tv-host-start').addEventListener('click',async()=>{Audio.unlock();Audio.uiTick();Haptics.tick();if(tvRoomCode&&window.CloudRoom)await window.CloudRoom.roomStart(tvRoomCode);});
 document.getElementById('btn-tv-host-close').addEventListener('click',()=>{tvHostClose();});
+document.getElementById('jmb-btn-again').addEventListener('click',()=>{tvPlayAgain();});
+document.getElementById('jmb-btn-close').addEventListener('click',()=>{closeJumbotron();});
 document.getElementById('btn-clear-room').addEventListener('click',async()=>{
   Audio.uiTick();Haptics.tick();
   if(!tvRoomCode||!window.CloudRoom)return;
